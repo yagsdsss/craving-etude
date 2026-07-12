@@ -1,0 +1,117 @@
+// Schéma de l'étude craving/activité physique.
+// RGPD : aucune donnée nominative — les participants sont identifiés par code (P01..P15) uniquement.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Groupe {
+  EXPERIMENTAL
+  CONTROLE
+}
+
+enum SousGroupe {
+  A
+  B
+}
+
+enum Sexe {
+  HOMME
+  FEMME
+  AUTRE
+}
+
+enum Modalite {
+  CARDIO
+  MUSCULATION
+}
+
+enum Ordre {
+  PREMIERE
+  DEUXIEME
+}
+
+enum Temps {
+  T0
+  T1
+  T2
+}
+
+model Participant {
+  code       String     @id
+  groupe     Groupe
+  age        Int
+  sexe       Sexe
+  sousGroupe SousGroupe
+  createdAt  DateTime   @default(now())
+
+  mesuresSeance MesureSeance[]
+  carnetsJour   CarnetJour[]
+  mesuresSuivi  MesureSuivi[]
+}
+
+model MesureSeance {
+  id              Int      @id @default(autoincrement())
+  participant     Participant @relation(fields: [participantCode], references: [code])
+  participantCode String
+  semaine         Int
+  numeroSeance    Int
+  modalite        Modalite
+  ordre           Ordre
+  heureDebut      DateTime?
+
+  cravingAvant Int?
+  cravingApres Int?
+  deltaCraving Int?
+
+  rpeReel                   Int?
+  heuresDepuisDerniereConso Float?
+  remarque                  String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([participantCode, semaine, numeroSeance])
+}
+
+model CarnetJour {
+  id              Int      @id @default(autoincrement())
+  participant     Participant @relation(fields: [participantCode], references: [code])
+  participantCode String
+  date            DateTime
+
+  cigarettes           Int?
+  puffPrises           Int?
+  snusSachets          Int?
+  cravingMoyenJour     Int?
+  evenementParticulier String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([participantCode, date])
+}
+
+model MesureSuivi {
+  id              Int      @id @default(autoincrement())
+  participant     Participant @relation(fields: [participantCode], references: [code])
+  participantCode String
+  temps           Temps
+
+  scoreFagerstrom     Int?
+  scoreCravingTrait   Float?
+  consoMoyenneSemaine Float?
+  test6min            Float?
+  poids               Float?
+  imc                 Float?
+  tourTaille          Float?
+  tauxPresence        Float?
+
+  createdAt DateTime @default(now())
+
+  @@unique([participantCode, temps])
+}
