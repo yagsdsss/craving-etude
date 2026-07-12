@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
+import { computeQsuScores, QSU_ITEMS } from "../lib/qsu";
 
 const prisma = new PrismaClient();
 
@@ -25,7 +26,7 @@ const randFloat = (min: number, max: number, decimals = 1) => {
 const chance = (p: number) => rng() < p;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-const PARTICIPANT_CODES = Array.from({ length: 15 }, (_, i) => `P${String(i + 1).padStart(2, "0")}`);
+const PARTICIPANT_CODES = Array.from({ length: 20 }, (_, i) => `P${String(i + 1).padStart(2, "0")}`);
 
 async function main() {
   console.log("Nettoyage des données existantes...");
@@ -156,28 +157,38 @@ async function main() {
       const progression = index / 2; // 0, 0.5, 1
 
       const fagerstromBase = isExperimental ? 6 - progression * 2 : 6 + randFloat(-0.3, 0.3);
-      const cravingTraitBase = isExperimental ? 65 - progression * 25 : 65 + randFloat(-3, 3);
+      const qsuBase = isExperimental ? 5 - progression * 2.5 : 5 + randFloat(-0.3, 0.3);
       const consoBase = isExperimental ? 110 - progression * 50 : 110 + randFloat(-5, 5);
       const test6minBase = isExperimental ? 540 + progression * 60 : 540 + randFloat(-10, 10);
       const poidsBase = (isExperimental ? 78 - progression * 2 : 78) + randFloat(-8, 8);
       const tourTailleBase = (isExperimental ? 88 - progression * 2 : 88) + randFloat(-6, 6);
+      const envieArreterBase = isExperimental ? 5 + progression * 3 : 5 + randFloat(-0.5, 0.5);
+      const capaciteReduireBase = isExperimental ? 4 + progression * 4 : 4 + randFloat(-0.5, 0.5);
+
+      const qsuAnswers = Object.fromEntries(
+        QSU_ITEMS.map((item) => [
+          item.key,
+          chance(0.05) ? null : Math.round(clamp(qsuBase + randFloat(-1, 1), 1, 7)),
+        ])
+      );
+      const qsuScores = computeQsuScores(qsuAnswers);
 
       await prisma.mesureSuivi.create({
         data: {
           participantCode: participant.code,
           temps,
           scoreFagerstrom: chance(0.05) ? null : Math.round(clamp(fagerstromBase + randFloat(-0.5, 0.5), 0, 10)),
-          scoreCravingTrait: chance(0.05) ? null : Math.round(clamp(cravingTraitBase, 0, 100)),
           consoMoyenneSemaine: chance(0.05) ? null : Math.round(clamp(consoBase, 0, 200)),
           test6min: chance(0.08) ? null : Math.round(clamp(test6minBase, 300, 800)),
           poids: chance(0.05) ? null : Math.round(poidsBase * 10) / 10,
           imc: chance(0.05) ? null : Math.round((poidsBase / (1.75 * 1.75)) * 10) / 10,
           tourTaille: chance(0.08) ? null : Math.round(tourTailleBase * 10) / 10,
-          tauxPresence: isExperimental
-            ? chance(0.05)
-              ? null
-              : Math.round(clamp(90 + randFloat(-15, 8), 40, 100))
-            : null,
+          envieArreter: chance(0.05) ? null : Math.round(clamp(envieArreterBase + randFloat(-1, 1), 0, 10)),
+          capaciteReduireConso: chance(0.05)
+            ? null
+            : Math.round(clamp(capaciteReduireBase + randFloat(-1, 1), 0, 10)),
+          ...qsuAnswers,
+          ...qsuScores,
         },
       });
     }

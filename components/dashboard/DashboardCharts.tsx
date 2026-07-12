@@ -35,6 +35,11 @@ const PARTICIPANT_COLORS = [
   "#D946EF",
   "#65A30D",
   "#DC2626",
+  "#0D9488",
+  "#CA8A04",
+  "#7C3AED",
+  "#DB2777",
+  "#4D7C0F",
 ];
 
 type Props = {
@@ -200,7 +205,9 @@ export default function DashboardCharts({
         </ResponsiveContainer>
       </Card>
 
-      <Card title="Trajectoires individuelles — consommation par semaine (n=15)">
+      <Card
+        title={`Trajectoires individuelles — consommation par semaine (n=${participantCodes.length})`}
+      >
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={trajectoires}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />

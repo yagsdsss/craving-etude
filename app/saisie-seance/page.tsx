@@ -14,7 +14,6 @@ type Draft = {
   participantCode: string | null;
   modalite: "CARDIO" | "MUSCULATION" | null;
   semaine: number;
-  numeroSeance: number;
   ordre: "PREMIERE" | "DEUXIEME" | null;
   heuresDepuisDerniereConso: string;
   heureDebut: string | null;
@@ -29,7 +28,6 @@ const emptyDraft: Draft = {
   participantCode: null,
   modalite: null,
   semaine: 1,
-  numeroSeance: 1,
   ordre: null,
   heuresDepuisDerniereConso: "",
   heureDebut: null,
@@ -38,6 +36,11 @@ const emptyDraft: Draft = {
   rpeReel: null,
   remarque: "",
 };
+
+/** Chaque semaine ne comporte que 2 séances : la position (1ère/2e) suffit à la déterminer. */
+function numeroSeanceDe(semaine: number, ordre: "PREMIERE" | "DEUXIEME") {
+  return (semaine - 1) * 2 + (ordre === "PREMIERE" ? 1 : 2);
+}
 
 type Participant = { code: string };
 
@@ -92,7 +95,7 @@ export default function SaisieSeancePage() {
     const payload = {
       participantCode: draft.participantCode,
       semaine: draft.semaine,
-      numeroSeance: draft.numeroSeance,
+      numeroSeance: numeroSeanceDe(draft.semaine, draft.ordre!),
       modalite: draft.modalite,
       ordre: draft.ordre,
       heureDebut: draft.heureDebut,
@@ -123,8 +126,7 @@ export default function SaisieSeancePage() {
     update({ step: "confirmation" });
   }
 
-  const canStart =
-    draft.participantCode && draft.modalite && draft.ordre && draft.semaine && draft.numeroSeance;
+  const canStart = draft.participantCode && draft.modalite && draft.ordre && draft.semaine;
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6">
@@ -207,37 +209,19 @@ export default function SaisieSeancePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Semaine</label>
-                <select
-                  value={draft.semaine}
-                  onChange={(e) => update({ semaine: Number(e.target.value) })}
-                  className="h-14 w-full rounded-xl bg-white px-3 text-base ring-1 ring-slate-200"
-                >
-                  {Array.from({ length: 6 }, (_, i) => i + 1).map((s) => (
-                    <option key={s} value={s}>
-                      Semaine {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  N° séance
-                </label>
-                <select
-                  value={draft.numeroSeance}
-                  onChange={(e) => update({ numeroSeance: Number(e.target.value) })}
-                  className="h-14 w-full rounded-xl bg-white px-3 text-base ring-1 ring-slate-200"
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((s) => (
-                    <option key={s} value={s}>
-                      Séance {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Semaine</label>
+              <select
+                value={draft.semaine}
+                onChange={(e) => update({ semaine: Number(e.target.value) })}
+                className="h-14 w-full rounded-xl bg-white px-3 text-base ring-1 ring-slate-200"
+              >
+                {Array.from({ length: 6 }, (_, i) => i + 1).map((s) => (
+                  <option key={s} value={s}>
+                    Semaine {s}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

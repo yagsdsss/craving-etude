@@ -1,5 +1,5 @@
 // Schéma de l'étude craving/activité physique.
-// RGPD : aucune donnée nominative — les participants sont identifiés par code (P01..P15) uniquement.
+// RGPD : aucune donnée nominative — les participants sont identifiés par code (P01..P20) uniquement.
 
 generator client {
   provider = "prisma-client"
@@ -103,13 +103,36 @@ model MesureSuivi {
   temps           Temps
 
   scoreFagerstrom     Int?
-  scoreCravingTrait   Float?
   consoMoyenneSemaine Float?
   test6min            Float?
   poids               Float?
   imc                 Float?
   tourTaille          Float?
-  tauxPresence        Float?
+
+  /// Envie d'arrêter de fumer (0 = aucune envie, 10 = envie maximale)
+  envieArreter Int?
+  /// "Si vous décidiez de réduire votre consommation, à quel point vous sentez-vous
+  /// capable d'y arriver ?" (0 = pas capable du tout, 10 = tout à fait capable)
+  capaciteReduireConso Int?
+
+  /// QSU-Brief (Cox, Tiffany & Christen, 2001) — 10 items, échelle 1 (pas du tout d'accord) à 7 (tout à fait d'accord)
+  qsu1  Int?
+  qsu2  Int?
+  qsu3  Int?
+  qsu4  Int?
+  qsu5  Int?
+  qsu6  Int?
+  qsu7  Int?
+  qsu8  Int?
+  qsu9  Int?
+  qsu10 Int?
+
+  /// Score total QSU-Brief, calculé automatiquement (moyenne des 10 items renseignés)
+  scoreCravingTrait Float?
+  /// Facteur 1 (désir/intention de fumer) — moyenne des items 1,3,6,7,9
+  qsuFacteur1 Float?
+  /// Facteur 2 (soulagement du manque) — moyenne des items 2,4,5,8,10
+  qsuFacteur2 Float?
 
   createdAt DateTime @default(now())
 

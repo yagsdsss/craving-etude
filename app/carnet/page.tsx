@@ -5,7 +5,7 @@ import ScaleButtons from "@/components/ScaleButtons";
 import { flushQueue, pendingCount, submitWithOfflineFallback } from "@/lib/offlineSync";
 
 const QUEUE_KEY = "carnet-queue-v1";
-const CODE_PATTERN = /^P(0[1-9]|1[0-5])$/;
+const CODE_PATTERN = /^P(0[1-9]|1[0-9]|20)$/;
 
 type Step = "code" | "form" | "confirmation";
 
@@ -38,7 +38,7 @@ export default function CarnetPage() {
   function handleCodeSubmit() {
     const normalized = code.trim().toUpperCase();
     if (!CODE_PATTERN.test(normalized)) {
-      setCodeError("Code invalide. Format attendu : P01 à P15.");
+      setCodeError("Code invalide. Format attendu : P01 à P20.");
       return;
     }
     setCode(normalized);

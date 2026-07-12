@@ -3,7 +3,7 @@ import { z } from "zod";
 const scale0to10 = z.number().int().min(0).max(10);
 
 export const participantSchema = z.object({
-  code: z.string().regex(/^P(0[1-9]|1[0-5])$/, "Code attendu : P01 à P15"),
+  code: z.string().regex(/^P(0[1-9]|1[0-9]|20)$/, "Code attendu : P01 à P20"),
   groupe: z.enum(["EXPERIMENTAL", "CONTROLE"]),
   age: z.number().int().min(18).max(30),
   sexe: z.enum(["HOMME", "FEMME", "AUTRE"]),
@@ -34,15 +34,27 @@ export const carnetJourSchema = z.object({
   evenementParticulier: z.string().nullable().optional(),
 });
 
+const qsuItem = z.number().int().min(1).max(7);
+
 export const mesureSuiviSchema = z.object({
   participantCode: z.string(),
   temps: z.enum(["T0", "T1", "T2"]),
   scoreFagerstrom: z.number().int().min(0).max(10).nullable().optional(),
-  scoreCravingTrait: z.number().nullable().optional(),
   consoMoyenneSemaine: z.number().min(0).nullable().optional(),
   test6min: z.number().min(0).nullable().optional(),
   poids: z.number().min(0).nullable().optional(),
   imc: z.number().min(0).nullable().optional(),
   tourTaille: z.number().min(0).nullable().optional(),
-  tauxPresence: z.number().min(0).max(100).nullable().optional(),
+  envieArreter: scale0to10.nullable().optional(),
+  capaciteReduireConso: scale0to10.nullable().optional(),
+  qsu1: qsuItem.nullable().optional(),
+  qsu2: qsuItem.nullable().optional(),
+  qsu3: qsuItem.nullable().optional(),
+  qsu4: qsuItem.nullable().optional(),
+  qsu5: qsuItem.nullable().optional(),
+  qsu6: qsuItem.nullable().optional(),
+  qsu7: qsuItem.nullable().optional(),
+  qsu8: qsuItem.nullable().optional(),
+  qsu9: qsuItem.nullable().optional(),
+  qsu10: qsuItem.nullable().optional(),
 });

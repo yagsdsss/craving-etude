@@ -57,7 +57,7 @@ export default function ParticipantsAdminPage() {
       setForm(emptyForm);
       load();
     } else {
-      setError("Échec de la création. Vérifie le code (P01-P15) et les champs.");
+      setError("Échec de la création. Vérifie le code (P01-P20) et les champs.");
     }
   }
 
@@ -72,7 +72,7 @@ export default function ParticipantsAdminPage() {
         <h2 className="mb-4 text-sm font-semibold text-slate-700">Nouveau participant</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-slate-600">Code (P01-P15)</label>
+            <label className="mb-1 block text-sm text-slate-600">Code (P01-P20)</label>
             <input
               required
               value={form.code}

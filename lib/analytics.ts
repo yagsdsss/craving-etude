@@ -165,14 +165,19 @@ export function trajectoiresIndividuelles(carnets: CarnetJour[], participants: P
   });
 }
 
-export function tauxPresenceParParticipant(suivis: MesureSuivi[], participants: Participant[]) {
+const SEANCES_ATTENDUES_TOTAL = 12; // 2 séances/semaine × 6 semaines
+
+/**
+ * Calculé automatiquement à partir des séances effectivement enregistrées pour
+ * chaque participant — pas de saisie manuelle. Seul le groupe expérimental a un
+ * programme à suivre, le taux est donc `null` pour le groupe contrôle.
+ */
+export function tauxPresenceParParticipant(seances: MesureSeance[], participants: Participant[]) {
   return participants.map((p) => {
-    const rows = suivis.filter((s) => s.participantCode === p.code);
-    const t2 = rows.find((s) => s.temps === "T2" && s.tauxPresence !== null);
-    const t1 = rows.find((s) => s.temps === "T1" && s.tauxPresence !== null);
-    const t0 = rows.find((s) => s.temps === "T0" && s.tauxPresence !== null);
-    const value = t2?.tauxPresence ?? t1?.tauxPresence ?? t0?.tauxPresence ?? null;
-    return { code: p.code, tauxPresence: value };
+    if (p.groupe !== "EXPERIMENTAL") return { code: p.code, tauxPresence: null };
+    const nbSeances = seances.filter((s) => s.participantCode === p.code).length;
+    const tauxPresence = round((nbSeances / SEANCES_ATTENDUES_TOTAL) * 100);
+    return { code: p.code, tauxPresence };
   });
 }
 
@@ -205,7 +210,8 @@ export function donneesManquantes(data: Data) {
       "poids",
       "imc",
       "tourTaille",
-      "tauxPresence",
+      "envieArreter",
+      "capaciteReduireConso",
     ]),
   };
 }

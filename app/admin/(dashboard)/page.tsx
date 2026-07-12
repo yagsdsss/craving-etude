@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
     consommation: consommationParSemaine(carnets, participants),
     trajectoires: trajectoiresIndividuelles(carnets, participants),
     participantCodes: participants.map((p) => p.code),
-    presence: tauxPresenceParParticipant(suivis, participants),
+    presence: tauxPresenceParParticipant(seances, participants),
     manquantes: donneesManquantes({ participants, seances, carnets, suivis }),
   };
 

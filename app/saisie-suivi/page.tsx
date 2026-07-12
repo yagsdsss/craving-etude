@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import LikertButtons from "@/components/LikertButtons";
+import { computeQsuScores, QSU_ITEMS } from "@/lib/qsu";
 
 type Participant = { code: string };
 
@@ -8,14 +10,18 @@ const emptyForm = {
   participantCode: "",
   temps: "T0" as "T0" | "T1" | "T2",
   scoreFagerstrom: "",
-  scoreCravingTrait: "",
   consoMoyenneSemaine: "",
   test6min: "",
   poids: "",
   imc: "",
   tourTaille: "",
-  tauxPresence: "",
+  envieArreter: "",
+  capaciteReduireConso: "",
 };
+
+const emptyQsu: Record<string, number | null> = Object.fromEntries(
+  QSU_ITEMS.map((i) => [i.key, null])
+);
 
 function toNumberOrNull(value: string): number | null {
   return value.trim() === "" ? null : Number(value);
@@ -24,6 +30,7 @@ function toNumberOrNull(value: string): number | null {
 export default function SaisieSuiviPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [form, setForm] = useState(emptyForm);
+  const [qsu, setQsu] = useState<Record<string, number | null>>(emptyQsu);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
@@ -33,6 +40,8 @@ export default function SaisieSuiviPage() {
       .then(setParticipants)
       .catch(() => setParticipants([]));
   }, []);
+
+  const scores = useMemo(() => computeQsuScores(qsu), [qsu]);
 
   function field(key: keyof typeof form) {
     return {
@@ -51,13 +60,14 @@ export default function SaisieSuiviPage() {
       participantCode: form.participantCode,
       temps: form.temps,
       scoreFagerstrom: toNumberOrNull(form.scoreFagerstrom),
-      scoreCravingTrait: toNumberOrNull(form.scoreCravingTrait),
       consoMoyenneSemaine: toNumberOrNull(form.consoMoyenneSemaine),
       test6min: toNumberOrNull(form.test6min),
       poids: toNumberOrNull(form.poids),
       imc: toNumberOrNull(form.imc),
       tourTaille: toNumberOrNull(form.tourTaille),
-      tauxPresence: toNumberOrNull(form.tauxPresence),
+      envieArreter: toNumberOrNull(form.envieArreter),
+      capaciteReduireConso: toNumberOrNull(form.capaciteReduireConso),
+      ...qsu,
     };
 
     const res = await fetch("/api/mesures-suivi", {
@@ -71,6 +81,7 @@ export default function SaisieSuiviPage() {
     if (res.ok) {
       setMessage({ type: "ok", text: "Mesure enregistrée." });
       setForm((prev) => ({ ...emptyForm, participantCode: prev.participantCode, temps: prev.temps }));
+      setQsu(emptyQsu);
     } else {
       setMessage({ type: "error", text: "Échec de l'enregistrement. Vérifie les champs." });
     }
@@ -119,13 +130,64 @@ export default function SaisieSuiviPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <NumberField label="Score de Fagerström (0-10)" {...field("scoreFagerstrom")} />
-            <NumberField label="Score craving trait" {...field("scoreCravingTrait")} />
             <NumberField label="Conso moyenne / semaine" {...field("consoMoyenneSemaine")} />
             <NumberField label="Test 6 minutes (mètres)" {...field("test6min")} />
             <NumberField label="Poids (kg)" {...field("poids")} />
             <NumberField label="IMC" {...field("imc")} />
             <NumberField label="Tour de taille (cm)" {...field("tourTaille")} />
-            <NumberField label="Taux de présence (%)" {...field("tauxPresence")} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <NumberField
+              label="Envie d'arrêter de fumer (0-10)"
+              min={0}
+              max={10}
+              {...field("envieArreter")}
+            />
+            <NumberField
+              label="Capacité perçue à réduire sa consommation (0-10)"
+              hint="Si vous décidiez de réduire votre consommation, à quel point vous sentez-vous capable d'y arriver ?"
+              min={0}
+              max={10}
+              {...field("capaciteReduireConso")}
+            />
+          </div>
+
+          <div className="border-t border-slate-100 pt-6">
+            <h2 className="mb-1 text-sm font-semibold text-slate-800">
+              Questionnaire QSU-Brief (craving trait)
+            </h2>
+            <p className="mb-4 text-xs text-slate-400">
+              Pour chaque item, de 1 (pas du tout d&apos;accord) à 7 (tout à fait d&apos;accord). Le
+              score total et les scores de facteur sont calculés automatiquement.
+            </p>
+
+            <div className="space-y-4">
+              {QSU_ITEMS.map((item, i) => (
+                <div key={item.key} className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-slate-700">
+                    {i + 1}. {item.texte}
+                  </p>
+                  <LikertButtons
+                    value={qsu[item.key]}
+                    onChange={(n) => setQsu((prev) => ({ ...prev, [item.key]: n }))}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-6 rounded-lg bg-slate-50 px-4 py-3 text-sm">
+              <span className="text-slate-500">
+                Score total : <span className="font-medium text-slate-900">{scores.scoreCravingTrait ?? "—"}</span>
+              </span>
+              <span className="text-slate-500">
+                Facteur 1 (désir) : <span className="font-medium text-slate-900">{scores.qsuFacteur1 ?? "—"}</span>
+              </span>
+              <span className="text-slate-500">
+                Facteur 2 (soulagement) :{" "}
+                <span className="font-medium text-slate-900">{scores.qsuFacteur2 ?? "—"}</span>
+              </span>
+            </div>
           </div>
 
           <p className="text-xs text-slate-400">
@@ -154,19 +216,28 @@ export default function SaisieSuiviPage() {
 
 function NumberField({
   label,
+  hint,
   value,
   onChange,
+  min,
+  max,
 }: {
   label: string;
+  hint?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  min?: number;
+  max?: number;
 }) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      {hint && <p className="mb-1 text-xs italic text-slate-400">« {hint} »</p>}
       <input
         type="number"
         step="any"
+        min={min}
+        max={max}
         value={value}
         onChange={onChange}
         placeholder="—"

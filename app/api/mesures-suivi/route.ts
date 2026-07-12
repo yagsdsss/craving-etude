@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mesureSuiviSchema } from "@/lib/schemas";
+import { computeQsuScores } from "@/lib/qsu";
 
 export async function GET() {
   const mesures = await prisma.mesureSuivi.findMany({
@@ -18,11 +19,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { participantCode, temps, ...rest } = parsed.data;
+  const scores = computeQsuScores(rest);
 
   const mesure = await prisma.mesureSuivi.upsert({
     where: { participantCode_temps: { participantCode, temps } },
-    create: { participantCode, temps, ...rest },
-    update: rest,
+    create: { participantCode, temps, ...rest, ...scores },
+    update: { ...rest, ...scores },
   });
 
   return NextResponse.json(mesure, { status: 201 });
