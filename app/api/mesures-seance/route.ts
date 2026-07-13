@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const participant = await prisma.participant.findUnique({
+    where: { code: parsed.data.participantCode },
+  });
+  if (!participant) {
+    return NextResponse.json({ error: "Code participant inconnu" }, { status: 404 });
+  }
+
   const { cravingAvant, cravingApres, heureDebut, ...rest } = parsed.data;
   const deltaCraving =
     cravingAvant != null && cravingApres != null ? cravingApres - cravingAvant : null;

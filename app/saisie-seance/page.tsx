@@ -42,11 +42,12 @@ function numeroSeanceDe(semaine: number, ordre: "PREMIERE" | "DEUXIEME") {
   return (semaine - 1) * 2 + (ordre === "PREMIERE" ? 1 : 2);
 }
 
-type Participant = { code: string };
+const CODE_PATTERN = /^P(0[1-9]|1[0-9]|20)$/;
 
 export default function SaisieSeancePage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [queued, setQueued] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -55,16 +56,13 @@ export default function SaisieSeancePage() {
     const raw = window.localStorage.getItem(DRAFT_KEY);
     if (raw) {
       try {
-        setDraft(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        setDraft(parsed);
+        setCodeInput(parsed.participantCode ?? "");
       } catch {
         // draft corrompu, on repart de zéro
       }
     }
-
-    fetch("/api/participants")
-      .then((r) => r.json())
-      .then(setParticipants)
-      .catch(() => setParticipants([]));
 
     setQueued(pendingCount(QUEUE_KEY));
 
@@ -144,27 +142,30 @@ export default function SaisieSeancePage() {
           <div className="space-y-6">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Participant
+                Ton code participant
               </label>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                {participants.map((p) => (
-                  <button
-                    key={p.code}
-                    type="button"
-                    onClick={() => update({ participantCode: p.code })}
-                    className={`h-14 rounded-xl text-base font-semibold transition ${
-                      draft.participantCode === p.code
-                        ? "bg-slate-900 text-white"
-                        : "bg-white text-slate-900 ring-1 ring-slate-200"
-                    }`}
-                  >
-                    {p.code}
-                  </button>
-                ))}
-              </div>
-              {participants.length === 0 && (
-                <p className="text-sm text-slate-500">Aucun participant enregistré.</p>
-              )}
+              <input
+                type="text"
+                placeholder="P01"
+                value={codeInput}
+                onChange={(e) => {
+                  setCodeInput(e.target.value);
+                  setCodeError(null);
+                }}
+                onBlur={() => {
+                  if (codeInput === "") return;
+                  const normalized = codeInput.trim().toUpperCase();
+                  if (CODE_PATTERN.test(normalized)) {
+                    setCodeInput(normalized);
+                    update({ participantCode: normalized });
+                  } else {
+                    setCodeError("Code invalide. Format attendu : P01 à P20.");
+                    update({ participantCode: null });
+                  }
+                }}
+                className="h-14 w-full rounded-xl bg-white px-4 text-center text-xl font-semibold tracking-widest uppercase ring-1 ring-slate-200"
+              />
+              {codeError && <p className="mt-2 text-sm text-red-600">{codeError}</p>}
             </div>
 
             <div>
