@@ -167,7 +167,7 @@ export default function CarnetPage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Craving moyen aujourd&apos;hui
+                Envie de nicotine moyenne aujourd&apos;hui
               </label>
               <ScaleButtons
                 value={cravingMoyenJour}

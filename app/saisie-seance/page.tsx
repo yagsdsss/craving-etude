@@ -272,7 +272,7 @@ export default function SaisieSeancePage() {
         {draft.step === "avant" && (
           <div className="space-y-6">
             <h2 className="text-base font-medium text-slate-700">
-              Craving AVANT la séance ({draft.participantCode})
+              Envie de nicotine AVANT la séance ({draft.participantCode})
             </h2>
             <ScaleButtons
               value={draft.cravingAvant}
@@ -307,7 +307,7 @@ export default function SaisieSeancePage() {
         {draft.step === "apres" && (
           <div className="space-y-6">
             <h2 className="text-base font-medium text-slate-700">
-              Craving APRÈS la séance ({draft.participantCode})
+              Envie de nicotine APRÈS la séance ({draft.participantCode})
             </h2>
             <ScaleButtons
               value={draft.cravingApres}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const LINKS = [
-  { href: "/saisie-seance", label: "Saisie séance", desc: "Craving avant/après, RPE — en salle" },
+  { href: "/saisie-seance", label: "Saisie séance", desc: "Envie de nicotine avant/après, RPE — en salle" },
   { href: "/carnet", label: "Carnet du jour", desc: "Pour les participants, chaque soir" },
   { href: "/saisie-suivi", label: "Mesures T0 / T1 / T2", desc: "Suivi complet, sur ordinateur" },
   { href: "/admin", label: "Tableau de bord", desc: "Graphiques, statistiques, exports (protégé)" },

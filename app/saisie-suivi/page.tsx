@@ -139,7 +139,7 @@ export default function SaisieSuiviPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <NumberField
-              label="Envie d'arrêter de fumer (0-10)"
+              label="Envie d'arrêter la nicotine (0-10)"
               min={0}
               max={10}
               {...field("envieArreter")}
