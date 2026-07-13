@@ -54,6 +54,12 @@ export default async function AdminDashboardPage() {
               Exporter {e.label}
             </a>
           ))}
+          <a
+            href="/api/export/pdf"
+            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800"
+          >
+            Exporter tout en PDF
+          </a>
         </div>
       </div>
 

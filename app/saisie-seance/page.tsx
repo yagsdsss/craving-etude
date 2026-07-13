@@ -44,10 +44,20 @@ function numeroSeanceDe(semaine: number, ordre: "PREMIERE" | "DEUXIEME") {
 
 const CODE_PATTERN = /^P(0[1-9]|1[0-9]|20)$/;
 
+/** Sous-groupe A : cardio en 1ère séance ; sous-groupe B : musculation en 1ère séance (contrebalancement). */
+function modaliteDe(sousGroupe: "A" | "B", ordre: "PREMIERE" | "DEUXIEME"): "CARDIO" | "MUSCULATION" {
+  const premiereModalite = sousGroupe === "A" ? "CARDIO" : "MUSCULATION";
+  const deuxiemeModalite = sousGroupe === "A" ? "MUSCULATION" : "CARDIO";
+  return ordre === "PREMIERE" ? premiereModalite : deuxiemeModalite;
+}
+
+type Participant = { code: string; sousGroupe: "A" | "B" };
+
 export default function SaisieSeancePage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [queued, setQueued] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -64,6 +74,11 @@ export default function SaisieSeancePage() {
       }
     }
 
+    fetch("/api/participants")
+      .then((r) => r.json())
+      .then(setParticipants)
+      .catch(() => setParticipants([]));
+
     setQueued(pendingCount(QUEUE_KEY));
 
     const sync = () => flushQueue(QUEUE_KEY).then(() => setQueued(pendingCount(QUEUE_KEY)));
@@ -71,6 +86,8 @@ export default function SaisieSeancePage() {
     window.addEventListener("online", sync);
     return () => window.removeEventListener("online", sync);
   }, []);
+
+  const participant = participants.find((p) => p.code === draft.participantCode) ?? null;
 
   function update(patch: Partial<Draft>) {
     setDraft((prev) => {
@@ -124,7 +141,7 @@ export default function SaisieSeancePage() {
     update({ step: "confirmation" });
   }
 
-  const canStart = draft.participantCode && draft.modalite && draft.ordre && draft.semaine;
+  const canStart = participant && draft.ordre && draft.semaine;
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6">
@@ -155,37 +172,22 @@ export default function SaisieSeancePage() {
                 onBlur={() => {
                   if (codeInput === "") return;
                   const normalized = codeInput.trim().toUpperCase();
-                  if (CODE_PATTERN.test(normalized)) {
-                    setCodeInput(normalized);
-                    update({ participantCode: normalized });
-                  } else {
+                  if (!CODE_PATTERN.test(normalized)) {
                     setCodeError("Code invalide. Format attendu : P01 à P20.");
                     update({ participantCode: null });
+                    return;
                   }
+                  setCodeInput(normalized);
+                  if (!participants.some((p) => p.code === normalized)) {
+                    setCodeError("Ce code n'existe pas encore — vérifie auprès du coach.");
+                    update({ participantCode: null });
+                    return;
+                  }
+                  update({ participantCode: normalized });
                 }}
                 className="h-14 w-full rounded-xl bg-white px-4 text-center text-xl font-semibold tracking-widest uppercase ring-1 ring-slate-200"
               />
               {codeError && <p className="mt-2 text-sm text-red-600">{codeError}</p>}
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Modalité</label>
-              <div className="grid grid-cols-2 gap-3">
-                {(["CARDIO", "MUSCULATION"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => update({ modalite: m })}
-                    className={`h-16 rounded-xl text-base font-semibold transition ${
-                      draft.modalite === m
-                        ? "bg-slate-900 text-white"
-                        : "bg-white text-slate-900 ring-1 ring-slate-200"
-                    }`}
-                  >
-                    {m === "CARDIO" ? "Cardio" : "Musculation"}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div>
@@ -209,6 +211,17 @@ export default function SaisieSeancePage() {
                 ))}
               </div>
             </div>
+
+            {participant && draft.ordre && (
+              <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+                Modalité (déterminée par ton sous-groupe {participant.sousGroupe}) :{" "}
+                <span className="font-semibold text-slate-900">
+                  {modaliteDe(participant.sousGroupe, draft.ordre) === "CARDIO"
+                    ? "Cardio"
+                    : "Musculation"}
+                </span>
+              </div>
+            )}
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Semaine</label>
@@ -242,7 +255,13 @@ export default function SaisieSeancePage() {
             <button
               type="button"
               disabled={!canStart}
-              onClick={() => update({ step: "avant", heureDebut: new Date().toISOString() })}
+              onClick={() =>
+                update({
+                  step: "avant",
+                  heureDebut: new Date().toISOString(),
+                  modalite: participant ? modaliteDe(participant.sousGroupe, draft.ordre!) : null,
+                })
+              }
               className="h-16 w-full rounded-2xl bg-slate-900 text-lg font-semibold text-white disabled:opacity-30"
             >
               Continuer
