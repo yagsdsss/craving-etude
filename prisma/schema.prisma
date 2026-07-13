@@ -58,7 +58,7 @@ model Participant {
 
 model MesureSeance {
   id              Int      @id @default(autoincrement())
-  participant     Participant @relation(fields: [participantCode], references: [code])
+  participant     Participant @relation(fields: [participantCode], references: [code], onDelete: Cascade)
   participantCode String
   semaine         Int
   numeroSeance    Int
@@ -81,7 +81,7 @@ model MesureSeance {
 
 model CarnetJour {
   id              Int      @id @default(autoincrement())
-  participant     Participant @relation(fields: [participantCode], references: [code])
+  participant     Participant @relation(fields: [participantCode], references: [code], onDelete: Cascade)
   participantCode String
   date            DateTime
 
@@ -98,7 +98,7 @@ model CarnetJour {
 
 model MesureSuivi {
   id              Int      @id @default(autoincrement())
-  participant     Participant @relation(fields: [participantCode], references: [code])
+  participant     Participant @relation(fields: [participantCode], references: [code], onDelete: Cascade)
   participantCode String
   temps           Temps
 
