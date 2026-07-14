@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { participantUpdateSchema } from "@/lib/schemas";
+import { carnetJourUpdateSchema } from "@/lib/schemas";
 import { isSessionTokenValid, SESSION_COOKIE } from "@/lib/auth";
 
 async function requireAdmin(request: NextRequest) {
@@ -10,34 +10,40 @@ async function requireAdmin(request: NextRequest) {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ code: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!(await requireAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  const { code } = await params;
+  const { id } = await params;
   const body = await request.json();
-  const parsed = participantUpdateSchema.safeParse(body);
+  const parsed = carnetJourUpdateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const participant = await prisma.participant.update({
-    where: { code },
-    data: parsed.data,
+  const { date, ...rest } = parsed.data;
+
+  const carnet = await prisma.carnetJour.update({
+    where: { id: Number(id) },
+    data: {
+      ...rest,
+      ...(date !== undefined ? { date: new Date(date) } : {}),
+    },
   });
-  return NextResponse.json(participant);
+
+  return NextResponse.json(carnet);
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ code: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!(await requireAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
-  const { code } = await params;
-  await prisma.participant.delete({ where: { code } });
+  const { id } = await params;
+  await prisma.carnetJour.delete({ where: { id: Number(id) } });
   return NextResponse.json({ ok: true });
 }
