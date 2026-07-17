@@ -13,6 +13,28 @@ type Data = {
   suivis: MesureSuivi[];
 };
 
+// --- Conversion de la consommation en équivalent cigarette ------------------
+// Puff = Adalya 20K → 20 000 bouffées quand le goût est utilisé à 100 %.
+// PUFFS_PAR_CIGARETTE : hypothèse d'équivalence (bouffées ≈ 1 cigarette).
+// ⚠️ Valeur à valider / citer dans le mémoire — ajuste-la ici si besoin, tout
+// le tableau de bord recalcule automatiquement.
+const PUFFS_TOTAL_ADALYA_20K = 20000;
+const PUFFS_PAR_CIGARETTE = 20; // 1 cigarette ≈ 20 bouffées → 1 % ≈ 10 cigarettes
+const CIGARETTES_PAR_POURCENT_PUFF = PUFFS_TOTAL_ADALYA_20K / 100 / PUFFS_PAR_CIGARETTE;
+
+/**
+ * Consommation quotidienne convertie en équivalent cigarette :
+ *   cigarettes (nombre) + puff (% → cig-équiv) + snus (1 sachet = 1 unité).
+ * Renvoie null si aucun des champs n'est renseigné (donnée manquante ≠ 0).
+ */
+function consoEquivalente(c: CarnetJour): number | null {
+  const parts: number[] = [];
+  if (c.cigarettes !== null) parts.push(c.cigarettes);
+  if (c.puffPourcentage !== null) parts.push(c.puffPourcentage * CIGARETTES_PAR_POURCENT_PUFF);
+  if (c.snusSachets !== null) parts.push(c.snusSachets);
+  return parts.length ? parts.reduce((a, b) => a + b, 0) : null;
+}
+
 function groupeOf(participants: Participant[], code: string) {
   return participants.find((p) => p.code === code)?.groupe ?? null;
 }
@@ -123,13 +145,6 @@ function semaineDeCarnet(carnets: CarnetJour[]) {
 export function consommationParSemaine(carnets: CarnetJour[], participants: Participant[]) {
   const withWeek = semaineDeCarnet(carnets);
 
-  const consoEquivalente = (c: CarnetJour) => {
-    const values = [c.cigarettes, c.puffPrises, c.snusSachets].filter(
-      (v): v is number => v !== null
-    );
-    return values.length ? values.reduce((a, b) => a + b, 0) : null;
-  };
-
   return Array.from({ length: 6 }, (_, i) => i + 1).map((semaine) => {
     const rows = withWeek.filter((c) => c.semaine === semaine);
     const exp = rows.filter((c) => groupeOf(participants, c.participantCode) === "EXPERIMENTAL");
@@ -146,12 +161,6 @@ export function consommationParSemaine(carnets: CarnetJour[], participants: Part
 
 export function trajectoiresIndividuelles(carnets: CarnetJour[], participants: Participant[]) {
   const withWeek = semaineDeCarnet(carnets);
-  const consoEquivalente = (c: CarnetJour) => {
-    const values = [c.cigarettes, c.puffPrises, c.snusSachets].filter(
-      (v): v is number => v !== null
-    );
-    return values.length ? values.reduce((a, b) => a + b, 0) : null;
-  };
 
   const semaines = Array.from({ length: 6 }, (_, i) => i + 1);
   return semaines.map((semaine) => {
@@ -181,6 +190,76 @@ export function tauxPresenceParParticipant(seances: MesureSeance[], participants
   });
 }
 
+/**
+ * Effet de la séance semaine par semaine : envie moyenne avant/après et delta,
+ * pour voir si la réduction d'envie évolue au fil des 6 semaines.
+ */
+export function effetSeanceParSemaine(seances: MesureSeance[]) {
+  return Array.from({ length: 6 }, (_, i) => i + 1).map((semaine) => {
+    const rows = seances.filter((s) => s.semaine === semaine);
+    const avant = rows.map((s) => s.cravingAvant).filter((v): v is number => v !== null);
+    const apres = rows.map((s) => s.cravingApres).filter((v): v is number => v !== null);
+    const delta = rows.map((s) => s.deltaCraving).filter((v): v is number => v !== null);
+    return {
+      semaine: `S${semaine}`,
+      avant: round(mean(avant)) ?? 0,
+      apres: round(mean(apres)) ?? 0,
+      delta: round(mean(delta)) ?? 0,
+      n: delta.length,
+    };
+  });
+}
+
+/**
+ * Récapitulatif hebdomadaire par participant : pour chaque semaine où le
+ * participant a des données, envie moyenne (carnet), delta séance moyen et
+ * consommation moyenne (équivalent cigarette). Base du suivi ligne par ligne.
+ */
+export function recapHebdoParParticipant(
+  seances: MesureSeance[],
+  carnets: CarnetJour[],
+  participants: Participant[]
+) {
+  const carnetsWithWeek = semaineDeCarnet(carnets);
+  const rows: {
+    code: string;
+    groupe: string;
+    semaine: number;
+    envieMoyenne: number | null;
+    deltaSeance: number | null;
+    consoMoyenne: number | null;
+  }[] = [];
+
+  for (const p of participants) {
+    for (let semaine = 1; semaine <= 6; semaine++) {
+      const cs = carnetsWithWeek.filter(
+        (c) => c.participantCode === p.code && c.semaine === semaine
+      );
+      const ss = seances.filter((s) => s.participantCode === p.code && s.semaine === semaine);
+
+      const envies = cs
+        .map((c) => c.cravingMoyenJour)
+        .filter((v): v is number => v !== null);
+      const deltas = ss.map((s) => s.deltaCraving).filter((v): v is number => v !== null);
+      const consos = cs.map(consoEquivalente).filter((v): v is number => v !== null);
+
+      // n'afficher que les semaines avec au moins une donnée
+      if (cs.length === 0 && ss.length === 0) continue;
+
+      rows.push({
+        code: p.code,
+        groupe: p.groupe,
+        semaine,
+        envieMoyenne: round(mean(envies)),
+        deltaSeance: round(mean(deltas)),
+        consoMoyenne: round(mean(consos)),
+      });
+    }
+  }
+
+  return rows;
+}
+
 export function donneesManquantes(data: Data) {
   const countNulls = (rows: Record<string, unknown>[], fields: string[]) =>
     fields.map((field) => ({
@@ -198,7 +277,7 @@ export function donneesManquantes(data: Data) {
     ]),
     carnetJour: countNulls(data.carnets as unknown as Record<string, unknown>[], [
       "cigarettes",
-      "puffPrises",
+      "puffPourcentage",
       "snusSachets",
       "cravingMoyenJour",
     ]),

@@ -86,7 +86,8 @@ model CarnetJour {
   date            DateTime
 
   cigarettes           Int?
-  puffPrises           Int?
+  /// % du goût (puff Adalya 20K) utilisé dans la journée (0-100)
+  puffPourcentage      Int?
   snusSachets          Int?
   cravingMoyenJour     Int?
   evenementParticulier String?

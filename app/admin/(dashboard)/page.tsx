@@ -5,6 +5,8 @@ import {
   cravingTraitParTemps,
   deltaParModalite,
   donneesManquantes,
+  effetSeanceParSemaine,
+  recapHebdoParParticipant,
   rpeParModalite,
   tauxPresenceParParticipant,
   trajectoiresIndividuelles,
@@ -37,6 +39,8 @@ export default async function AdminDashboardPage() {
     trajectoires: trajectoiresIndividuelles(carnets, participants),
     participantCodes: participants.map((p) => p.code),
     presence: tauxPresenceParParticipant(seances, participants),
+    effetSemaine: effetSeanceParSemaine(seances),
+    recapHebdo: recapHebdoParParticipant(seances, carnets, participants),
     manquantes: donneesManquantes({ participants, seances, carnets, suivis }),
   };
 

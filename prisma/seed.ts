@@ -124,7 +124,10 @@ async function main() {
         const consoJour = clamp(baseConso + randFloat(-4, 4), 0, 40);
 
         const cigarettes = chance(0.08) ? null : Math.round(consoJour * 0.7);
-        const puffPrises = chance(0.08) ? null : Math.round(consoJour * 0.2);
+        // % du goût puff utilisé dans la journée (baisse avec la progression pour le groupe exp.)
+        const puffPourcentage = chance(0.08)
+          ? null
+          : Math.round(clamp((isExperimental ? 6 - progression * 3 : 6) + randFloat(-2, 2), 0, 100));
         const snusSachets = chance(0.5) ? (chance(0.08) ? null : Math.round(consoJour * 0.05)) : 0;
 
         const cravingBase = isExperimental ? 6 - progression * 2.5 : 6 + randFloat(-0.5, 0.5);
@@ -137,7 +140,7 @@ async function main() {
             participantCode: participant.code,
             date,
             cigarettes,
-            puffPrises,
+            puffPourcentage,
             snusSachets,
             cravingMoyenJour,
             evenementParticulier: chance(0.06)

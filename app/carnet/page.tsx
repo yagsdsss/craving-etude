@@ -20,7 +20,7 @@ export default function CarnetPage() {
   const [queued, setQueued] = useState(0);
 
   const [cigarettes, setCigarettes] = useState("");
-  const [puffPrises, setPuffPrises] = useState("");
+  const [puffPourcentage, setPuffPourcentage] = useState("");
   const [snusSachets, setSnusSachets] = useState("");
   const [cravingMoyenJour, setCravingMoyenJour] = useState<number | null>(null);
   const [evenementParticulier, setEvenementParticulier] = useState("");
@@ -54,7 +54,7 @@ export default function CarnetPage() {
       participantCode: code,
       date: todayIso(),
       cigarettes: cigarettes ? Number(cigarettes) : null,
-      puffPrises: puffPrises ? Number(puffPrises) : null,
+      puffPourcentage: puffPourcentage ? Number(puffPourcentage) : null,
       snusSachets: snusSachets ? Number(snusSachets) : null,
       cravingMoyenJour,
       evenementParticulier: evenementParticulier || null,
@@ -76,7 +76,7 @@ export default function CarnetPage() {
     setStep("code");
     setCode("");
     setCigarettes("");
-    setPuffPrises("");
+    setPuffPourcentage("");
     setSnusSachets("");
     setCravingMoyenJour(null);
     setEvenementParticulier("");
@@ -139,16 +139,21 @@ export default function CarnetPage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Puffs prises
+                % du goût utilisé (puff Adalya 20K)
               </label>
               <input
                 type="number"
                 inputMode="numeric"
                 min={0}
-                value={puffPrises}
-                onChange={(e) => setPuffPrises(e.target.value)}
+                max={100}
+                placeholder="0 à 100"
+                value={puffPourcentage}
+                onChange={(e) => setPuffPourcentage(e.target.value)}
                 className="h-14 w-full rounded-xl bg-white px-4 text-base ring-1 ring-slate-200"
               />
+              <p className="mt-1 text-xs text-slate-400">
+                Estime la part du puff consommée aujourd&apos;hui, en pourcentage.
+              </p>
             </div>
 
             <div>

@@ -28,7 +28,7 @@ export const carnetJourSchema = z.object({
   participantCode: z.string(),
   date: z.string(), // YYYY-MM-DD
   cigarettes: z.number().int().min(0).nullable().optional(),
-  puffPrises: z.number().int().min(0).nullable().optional(),
+  puffPourcentage: z.number().int().min(0).max(100).nullable().optional(),
   snusSachets: z.number().int().min(0).nullable().optional(),
   cravingMoyenJour: scale0to10.nullable().optional(),
   evenementParticulier: z.string().nullable().optional(),
@@ -86,7 +86,7 @@ export const mesureSeanceUpdateSchema = z.object({
 export const carnetJourUpdateSchema = z.object({
   date: z.string().optional(),
   cigarettes: z.number().int().min(0).nullable().optional(),
-  puffPrises: z.number().int().min(0).nullable().optional(),
+  puffPourcentage: z.number().int().min(0).max(100).nullable().optional(),
   snusSachets: z.number().int().min(0).nullable().optional(),
   cravingMoyenJour: scale0to10.nullable().optional(),
   evenementParticulier: z.string().nullable().optional(),

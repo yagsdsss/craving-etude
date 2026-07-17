@@ -57,8 +57,8 @@ const carnetFields: FieldConfig[] = [
   { key: "participantCode", label: "Participant", type: "text", readOnly: true },
   { key: "date", label: "Date", type: "date" },
   { key: "cigarettes", label: "Cigarettes", type: "number", min: 0 },
-  { key: "puffPrises", label: "Puffs", type: "number", min: 0 },
-  { key: "snusSachets", label: "Snus", type: "number", min: 0 },
+  { key: "puffPourcentage", label: "% goût puff (0-100)", type: "number", min: 0, max: 100 },
+  { key: "snusSachets", label: "Snus (sachets)", type: "number", min: 0 },
   { key: "cravingMoyenJour", label: "Envie moyenne (0-10)", type: "number", min: 0, max: 10 },
   { key: "evenementParticulier", label: "Événement particulier", type: "textarea" },
 ];
@@ -136,7 +136,7 @@ const TABS = [
           "participantCode",
           "date",
           "cigarettes",
-          "puffPrises",
+          "puffPourcentage",
           "snusSachets",
           "cravingMoyenJour",
         ]}

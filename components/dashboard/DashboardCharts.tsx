@@ -67,6 +67,15 @@ type Props = {
   trajectoires: Record<string, number | string | null>[];
   participantCodes: string[];
   presence: { code: string; tauxPresence: number | null }[];
+  effetSemaine: { semaine: string; avant: number; apres: number; delta: number; n: number }[];
+  recapHebdo: {
+    code: string;
+    groupe: string;
+    semaine: number;
+    envieMoyenne: number | null;
+    deltaSeance: number | null;
+    consoMoyenne: number | null;
+  }[];
   manquantes: {
     mesureSeance: { champ: string; manquants: number; total: number }[];
     carnetJour: { champ: string; manquants: number; total: number }[];
@@ -103,6 +112,8 @@ export default function DashboardCharts({
   trajectoires,
   participantCodes,
   presence,
+  effetSemaine,
+  recapHebdo,
   manquantes,
 }: Props) {
   return (
@@ -254,6 +265,65 @@ export default function DashboardCharts({
             <Bar dataKey="tauxPresence" fill={INDIGO} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+      </Card>
+
+      <Card title="Effet séance par semaine (envie avant / après et delta)">
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={effetSemaine}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+            <XAxis dataKey="semaine" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="avant" name="Envie avant" stroke={INDIGO} strokeWidth={2} />
+            <Line type="monotone" dataKey="apres" name="Envie après" stroke={SLATE} strokeWidth={2} />
+            <Line type="monotone" dataKey="delta" name="Delta" stroke={EMERALD} strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+        <p className="mt-3 text-xs text-slate-400">
+          Montre si la réduction d&apos;envie par séance (delta) s&apos;accentue au fil des semaines.
+        </p>
+      </Card>
+
+      <Card title="Récapitulatif hebdomadaire par participant">
+        <div className="max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-white text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-2 py-2 font-medium">Participant</th>
+                <th className="px-2 py-2 font-medium">Groupe</th>
+                <th className="px-2 py-2 font-medium">Sem.</th>
+                <th className="px-2 py-2 font-medium">Envie moy.</th>
+                <th className="px-2 py-2 font-medium">Delta séance</th>
+                <th className="px-2 py-2 font-medium">Conso (éq. cig.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recapHebdo.map((r) => (
+                <tr key={`${r.code}-${r.semaine}`} className="border-t border-slate-100">
+                  <td className="px-2 py-1.5 font-medium text-slate-900">{r.code}</td>
+                  <td className="px-2 py-1.5 text-slate-500">
+                    {r.groupe === "EXPERIMENTAL" ? "Exp." : "Ctrl."}
+                  </td>
+                  <td className="px-2 py-1.5 text-slate-700">S{r.semaine}</td>
+                  <td className="px-2 py-1.5 text-slate-700">{fmt(r.envieMoyenne)}</td>
+                  <td className="px-2 py-1.5 text-slate-700">{fmt(r.deltaSeance)}</td>
+                  <td className="px-2 py-1.5 text-slate-700">{fmt(r.consoMoyenne)}</td>
+                </tr>
+              ))}
+              {recapHebdo.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-2 py-4 text-sm text-slate-400">
+                    Aucune donnée hebdomadaire pour le moment.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Conso en équivalent cigarette : cigarettes + puff (% → éq. cig.) + snus (1 sachet = 1).
+        </p>
       </Card>
 
       <Card title="Données manquantes">
