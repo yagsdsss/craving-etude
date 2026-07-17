@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mesureSeanceUpdateSchema } from "@/lib/schemas";
+import { computeQsuScores } from "@/lib/qsu";
 import { isSessionTokenValid, SESSION_COOKIE } from "@/lib/auth";
+
+const QSU_KEYS = ["qsu1","qsu2","qsu3","qsu4","qsu5","qsu6","qsu7","qsu8","qsu9","qsu10"] as const;
 
 async function requireAdmin(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -36,10 +39,18 @@ export async function PATCH(
   const deltaCraving =
     cravingAvant != null && cravingApres != null ? cravingApres - cravingAvant : null;
 
+  // Recalcul des scores QSU à partir des items finaux (existants + modifiés)
+  const finalQsu: Record<string, number | null> = {};
+  for (const key of QSU_KEYS) {
+    finalQsu[key] = rest[key] !== undefined ? rest[key]! : existing[key];
+  }
+  const qsuScores = computeQsuScores(finalQsu);
+
   const mesure = await prisma.mesureSeance.update({
     where: { id: Number(id) },
     data: {
       ...rest,
+      ...qsuScores,
       deltaCraving,
       ...(heureDebut !== undefined
         ? { heureDebut: heureDebut ? new Date(heureDebut) : null }

@@ -74,6 +74,26 @@ model MesureSeance {
   heuresDepuisDerniereConso Float?
   remarque                  String?
 
+  /// QSU-Brief (Cox, Tiffany & Christen, 2001), adapté à la nicotine — rempli à la
+  /// FIN de la séance de sport. 10 items, échelle 1 (pas du tout d'accord) à 7 (tout à fait d'accord).
+  qsu1  Int?
+  qsu2  Int?
+  qsu3  Int?
+  qsu4  Int?
+  qsu5  Int?
+  qsu6  Int?
+  qsu7  Int?
+  qsu8  Int?
+  qsu9  Int?
+  qsu10 Int?
+
+  /// Score total QSU-Brief, calculé automatiquement (moyenne des 10 items renseignés)
+  qsuScoreTotal Float?
+  /// Facteur 1 (désir/intention de consommer) — moyenne des items 1,3,6,7,9
+  qsuFacteur1   Float?
+  /// Facteur 2 (soulagement du manque) — moyenne des items 2,4,5,8,10
+  qsuFacteur2   Float?
+
   createdAt DateTime @default(now())
 
   @@unique([participantCode, semaine, numeroSeance])
@@ -103,10 +123,11 @@ model MesureSuivi {
   participantCode String
   temps           Temps
 
-  scoreFagerstrom     Int?
   consoMoyenneSemaine Float?
-  test6min            Float?
   poids               Float?
+  /// Taille en cm — sert au calcul automatique de l'IMC
+  taille              Float?
+  /// IMC calculé automatiquement à partir du poids et de la taille
   imc                 Float?
   tourTaille          Float?
 
@@ -116,24 +137,15 @@ model MesureSuivi {
   /// capable d'y arriver ?" (0 = pas capable du tout, 10 = tout à fait capable)
   capaciteReduireConso Int?
 
-  /// QSU-Brief (Cox, Tiffany & Christen, 2001), adapté à la nicotine — 10 items, échelle 1 (pas du tout d'accord) à 7 (tout à fait d'accord)
-  qsu1  Int?
-  qsu2  Int?
-  qsu3  Int?
-  qsu4  Int?
-  qsu5  Int?
-  qsu6  Int?
-  qsu7  Int?
-  qsu8  Int?
-  qsu9  Int?
-  qsu10 Int?
-
-  /// Score total QSU-Brief, calculé automatiquement (moyenne des 10 items renseignés)
-  scoreCravingTrait Float?
-  /// Facteur 1 (désir/intention de consommer) — moyenne des items 1,3,6,7,9
-  qsuFacteur1 Float?
-  /// Facteur 2 (soulagement du manque) — moyenne des items 2,4,5,8,10
-  qsuFacteur2 Float?
+  /// Test de Fagerström (dépendance à la nicotine), 6 items. Réponses brutes (indices d'option).
+  fager1 Int?
+  fager2 Int?
+  fager3 Int?
+  fager4 Int?
+  fager5 Int?
+  fager6 Int?
+  /// Score de Fagerström (0-10) calculé automatiquement à partir des 6 items
+  scoreFagerstrom Int?
 
   createdAt DateTime @default(now())
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mesureSuiviSchema } from "@/lib/schemas";
-import { computeQsuScores } from "@/lib/qsu";
+import { computeFagerstromScore } from "@/lib/fagerstrom";
+import { computeImc } from "@/lib/imc";
 
 export async function GET() {
   const mesures = await prisma.mesureSuivi.findMany({
@@ -19,12 +20,15 @@ export async function POST(request: NextRequest) {
   }
 
   const { participantCode, temps, ...rest } = parsed.data;
-  const scores = computeQsuScores(rest);
+  const scoreFagerstrom = computeFagerstromScore(rest);
+  const imc = computeImc(rest.poids, rest.taille);
+
+  const data = { ...rest, scoreFagerstrom, imc };
 
   const mesure = await prisma.mesureSuivi.upsert({
     where: { participantCode_temps: { participantCode, temps } },
-    create: { participantCode, temps, ...rest, ...scores },
-    update: { ...rest, ...scores },
+    create: { participantCode, temps, ...data },
+    update: data,
   });
 
   return NextResponse.json(mesure, { status: 201 });

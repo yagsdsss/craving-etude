@@ -1,26 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import LikertButtons from "@/components/LikertButtons";
-import { computeQsuScores, QSU_ITEMS } from "@/lib/qsu";
+import { FAGERSTROM_ITEMS, computeFagerstromScore } from "@/lib/fagerstrom";
+import { computeImc } from "@/lib/imc";
 
 type Participant = { code: string };
 
 const emptyForm = {
   participantCode: "",
   temps: "T0" as "T0" | "T1" | "T2",
-  scoreFagerstrom: "",
   consoMoyenneSemaine: "",
-  test6min: "",
   poids: "",
-  imc: "",
+  taille: "",
   tourTaille: "",
   envieArreter: "",
   capaciteReduireConso: "",
 };
 
-const emptyQsu: Record<string, number | null> = Object.fromEntries(
-  QSU_ITEMS.map((i) => [i.key, null])
+const emptyFager: Record<string, number | null> = Object.fromEntries(
+  FAGERSTROM_ITEMS.map((i) => [i.key, null])
 );
 
 function toNumberOrNull(value: string): number | null {
@@ -30,7 +28,7 @@ function toNumberOrNull(value: string): number | null {
 export default function SaisieSuiviPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [form, setForm] = useState(emptyForm);
-  const [qsu, setQsu] = useState<Record<string, number | null>>(emptyQsu);
+  const [fager, setFager] = useState<Record<string, number | null>>(emptyFager);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
@@ -41,7 +39,11 @@ export default function SaisieSuiviPage() {
       .catch(() => setParticipants([]));
   }, []);
 
-  const scores = useMemo(() => computeQsuScores(qsu), [qsu]);
+  const scoreFagerstrom = useMemo(() => computeFagerstromScore(fager), [fager]);
+  const imc = useMemo(
+    () => computeImc(toNumberOrNull(form.poids), toNumberOrNull(form.taille)),
+    [form.poids, form.taille]
+  );
 
   function field(key: keyof typeof form) {
     return {
@@ -59,15 +61,13 @@ export default function SaisieSuiviPage() {
     const payload = {
       participantCode: form.participantCode,
       temps: form.temps,
-      scoreFagerstrom: toNumberOrNull(form.scoreFagerstrom),
       consoMoyenneSemaine: toNumberOrNull(form.consoMoyenneSemaine),
-      test6min: toNumberOrNull(form.test6min),
       poids: toNumberOrNull(form.poids),
-      imc: toNumberOrNull(form.imc),
+      taille: toNumberOrNull(form.taille),
       tourTaille: toNumberOrNull(form.tourTaille),
       envieArreter: toNumberOrNull(form.envieArreter),
       capaciteReduireConso: toNumberOrNull(form.capaciteReduireConso),
-      ...qsu,
+      ...fager,
     };
 
     const res = await fetch("/api/mesures-suivi", {
@@ -81,7 +81,7 @@ export default function SaisieSuiviPage() {
     if (res.ok) {
       setMessage({ type: "ok", text: "Mesure enregistrée." });
       setForm((prev) => ({ ...emptyForm, participantCode: prev.participantCode, temps: prev.temps }));
-      setQsu(emptyQsu);
+      setFager(emptyFager);
     } else {
       setMessage({ type: "error", text: "Échec de l'enregistrement. Vérifie les champs." });
     }
@@ -129,12 +129,16 @@ export default function SaisieSuiviPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <NumberField label="Score de Fagerström (0-10)" {...field("scoreFagerstrom")} />
             <NumberField label="Conso moyenne / semaine" {...field("consoMoyenneSemaine")} />
-            <NumberField label="Test 6 minutes (mètres)" {...field("test6min")} />
-            <NumberField label="Poids (kg)" {...field("poids")} />
-            <NumberField label="IMC" {...field("imc")} />
             <NumberField label="Tour de taille (cm)" {...field("tourTaille")} />
+            <NumberField label="Poids (kg)" {...field("poids")} />
+            <NumberField label="Taille (cm)" {...field("taille")} />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">IMC (auto)</label>
+              <div className="flex h-11 items-center rounded-lg bg-slate-50 px-3 text-sm text-slate-600">
+                {imc ?? "—"}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -155,38 +159,44 @@ export default function SaisieSuiviPage() {
 
           <div className="border-t border-slate-100 pt-6">
             <h2 className="mb-1 text-sm font-semibold text-slate-800">
-              Questionnaire QSU-Brief (craving trait)
+              Test de Fagerström (dépendance à la nicotine)
             </h2>
             <p className="mb-4 text-xs text-slate-400">
-              Pour chaque item, de 1 (pas du tout d&apos;accord) à 7 (tout à fait d&apos;accord). Le
-              score total et les scores de facteur sont calculés automatiquement.
+              Sélectionne une réponse par question. Le score total (0-10) est calculé automatiquement.
             </p>
 
-            <div className="space-y-4">
-              {QSU_ITEMS.map((item, i) => (
-                <div key={item.key} className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm text-slate-700">
+            <div className="space-y-5">
+              {FAGERSTROM_ITEMS.map((item, i) => (
+                <div key={item.key}>
+                  <p className="mb-2 text-sm text-slate-700">
                     {i + 1}. {item.texte}
                   </p>
-                  <LikertButtons
-                    value={qsu[item.key]}
-                    onChange={(n) => setQsu((prev) => ({ ...prev, [item.key]: n }))}
-                  />
+                  <div className="flex flex-wrap gap-2">
+                    {item.options.map((opt, idx) => {
+                      const selected = fager[item.key] === idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setFager((prev) => ({ ...prev, [item.key]: idx }))}
+                          className={`rounded-lg px-3 py-2 text-sm transition ${
+                            selected
+                              ? "bg-slate-900 text-white"
+                              : "bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-slate-300"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-6 rounded-lg bg-slate-50 px-4 py-3 text-sm">
-              <span className="text-slate-500">
-                Score total : <span className="font-medium text-slate-900">{scores.scoreCravingTrait ?? "—"}</span>
-              </span>
-              <span className="text-slate-500">
-                Facteur 1 (désir) : <span className="font-medium text-slate-900">{scores.qsuFacteur1 ?? "—"}</span>
-              </span>
-              <span className="text-slate-500">
-                Facteur 2 (soulagement) :{" "}
-                <span className="font-medium text-slate-900">{scores.qsuFacteur2 ?? "—"}</span>
-              </span>
+            <div className="mt-5 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              Score de Fagerström :{" "}
+              <span className="font-medium text-slate-900">{scoreFagerstrom ?? "—"}</span> / 10
             </div>
           </div>
 

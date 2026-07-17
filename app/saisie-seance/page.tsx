@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import ScaleButtons from "@/components/ScaleButtons";
+import LikertButtons from "@/components/LikertButtons";
+import { QSU_ITEMS } from "@/lib/qsu";
 import { flushQueue, pendingCount, submitWithOfflineFallback } from "@/lib/offlineSync";
 
 const DRAFT_KEY = "seance-draft-v1";
 const QUEUE_KEY = "seance-queue-v1";
 
-type Step = "setup" | "avant" | "enCours" | "apres" | "rpe" | "confirmation";
+type Step = "setup" | "avant" | "enCours" | "apres" | "rpe" | "qsu" | "confirmation";
 
 type Draft = {
   step: Step;
@@ -21,7 +23,12 @@ type Draft = {
   cravingApres: number | null;
   rpeReel: number | null;
   remarque: string;
+  qsu: Record<string, number | null>;
 };
+
+const emptyQsu: Record<string, number | null> = Object.fromEntries(
+  QSU_ITEMS.map((i) => [i.key, null])
+);
 
 const emptyDraft: Draft = {
   step: "setup",
@@ -35,6 +42,7 @@ const emptyDraft: Draft = {
   cravingApres: null,
   rpeReel: null,
   remarque: "",
+  qsu: emptyQsu,
 };
 
 /** Chaque semaine ne comporte que 2 séances : la position (1ère/2e) suffit à la déterminer. */
@@ -67,7 +75,8 @@ export default function SaisieSeancePage() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        setDraft(parsed);
+        // fusion avec emptyDraft pour tolérer les brouillons antérieurs (ex : sans QSU)
+        setDraft({ ...emptyDraft, ...parsed, qsu: { ...emptyQsu, ...(parsed.qsu ?? {}) } });
         setCodeInput(parsed.participantCode ?? "");
       } catch {
         // draft corrompu, on repart de zéro
@@ -121,6 +130,7 @@ export default function SaisieSeancePage() {
         ? Number(draft.heuresDepuisDerniereConso)
         : null,
       remarque: draft.remarque || null,
+      ...draft.qsu,
     };
 
     const result = await submitWithOfflineFallback(
@@ -346,10 +356,48 @@ export default function SaisieSeancePage() {
                 className="w-full rounded-xl bg-white p-4 text-base ring-1 ring-slate-200"
               />
             </div>
+            <button
+              type="button"
+              disabled={draft.rpeReel === null}
+              onClick={() => update({ step: "qsu" })}
+              className="h-16 w-full rounded-2xl bg-slate-900 text-lg font-semibold text-white disabled:opacity-30"
+            >
+              Continuer vers le questionnaire
+            </button>
+          </div>
+        )}
+
+        {draft.step === "qsu" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-base font-medium text-slate-700">
+                Questionnaire (envie de nicotine, juste après la séance)
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Pour chaque phrase, de 1 (pas du tout d&apos;accord) à 7 (tout à fait d&apos;accord).
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              {QSU_ITEMS.map((item, i) => (
+                <div key={item.key}>
+                  <p className="mb-2 text-sm text-slate-700">
+                    {i + 1}. {item.texte}
+                  </p>
+                  <LikertButtons
+                    value={draft.qsu[item.key]}
+                    onChange={(n) =>
+                      update({ qsu: { ...draft.qsu, [item.key]: n } })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
             {saveError && <p className="text-sm text-red-600">{saveError}</p>}
             <button
               type="button"
-              disabled={draft.rpeReel === null || saving}
+              disabled={saving}
               onClick={handleSave}
               className="h-16 w-full rounded-2xl bg-slate-900 text-lg font-semibold text-white disabled:opacity-30"
             >

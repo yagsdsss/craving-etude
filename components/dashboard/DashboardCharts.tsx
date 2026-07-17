@@ -62,7 +62,7 @@ type Props = {
     chart: { label: string; moyenne: number }[];
     ecartAbsolu: number | null;
   };
-  cravingTrait: { temps: string; experimental: number | null; controle: number | null }[];
+  qsuSemaine: { semaine: string; score: number | null }[];
   consommation: { semaine: string; experimental: number | null; controle: number | null }[];
   trajectoires: Record<string, number | string | null>[];
   participantCodes: string[];
@@ -107,7 +107,7 @@ export default function DashboardCharts({
   avantApres,
   delta,
   rpe,
-  cravingTrait,
+  qsuSemaine,
   consommation,
   trajectoires,
   participantCodes,
@@ -160,32 +160,26 @@ export default function DashboardCharts({
         </div>
       </Card>
 
-      <Card title="Évolution du craving trait — expérimental vs contrôle">
+      <Card title="Score QSU-Brief moyen par semaine (fin de séance)">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={cravingTrait}>
+          <LineChart data={qsuSemaine}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="temps" />
-            <YAxis />
+            <XAxis dataKey="semaine" />
+            <YAxis domain={[1, 7]} />
             <Tooltip />
-            <Legend />
             <Line
               type="monotone"
-              dataKey="experimental"
-              name="Expérimental"
+              dataKey="score"
+              name="Score QSU"
               stroke={INDIGO}
-              strokeWidth={2}
-              connectNulls
-            />
-            <Line
-              type="monotone"
-              dataKey="controle"
-              name="Contrôle"
-              stroke={SLATE}
               strokeWidth={2}
               connectNulls
             />
           </LineChart>
         </ResponsiveContainer>
+        <p className="mt-3 text-xs text-slate-400">
+          Craving (QSU-Brief) mesuré juste après chaque séance — groupe expérimental.
+        </p>
       </Card>
 
       <Card title="Consommation quotidienne moyenne — semaine par semaine">

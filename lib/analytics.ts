@@ -115,16 +115,16 @@ export function rpeParModalite(seances: MesureSeance[]) {
   };
 }
 
-export function cravingTraitParTemps(suivis: MesureSuivi[], participants: Participant[]) {
-  const temps = ["T0", "T1", "T2"] as const;
-  return temps.map((t) => {
-    const rows = suivis.filter((s) => s.temps === t && s.scoreCravingTrait !== null);
-    const exp = rows.filter((s) => groupeOf(participants, s.participantCode) === "EXPERIMENTAL");
-    const ctrl = rows.filter((s) => groupeOf(participants, s.participantCode) === "CONTROLE");
+/**
+ * Score QSU-Brief moyen par semaine (rempli en fin de séance, groupe expérimental).
+ * Le QSU n'est collecté qu'en séance, donc pas de comparaison inter-groupes ici.
+ */
+export function qsuParSemaine(seances: MesureSeance[]) {
+  return Array.from({ length: 6 }, (_, i) => i + 1).map((semaine) => {
+    const rows = seances.filter((s) => s.semaine === semaine && s.qsuScoreTotal !== null);
     return {
-      temps: t,
-      experimental: round(mean(exp.map((s) => s.scoreCravingTrait as number))),
-      controle: round(mean(ctrl.map((s) => s.scoreCravingTrait as number))),
+      semaine: `S${semaine}`,
+      score: round(mean(rows.map((s) => s.qsuScoreTotal as number))),
     };
   });
 }
@@ -278,6 +278,7 @@ export function donneesManquantes(data: Data) {
       "cravingApres",
       "rpeReel",
       "heuresDepuisDerniereConso",
+      "qsuScoreTotal",
     ]),
     carnetJour: countNulls(data.carnets as unknown as Record<string, unknown>[], [
       "cigarettes",
@@ -287,10 +288,9 @@ export function donneesManquantes(data: Data) {
     ]),
     mesureSuivi: countNulls(data.suivis as unknown as Record<string, unknown>[], [
       "scoreFagerstrom",
-      "scoreCravingTrait",
       "consoMoyenneSemaine",
-      "test6min",
       "poids",
+      "taille",
       "imc",
       "tourTaille",
       "envieArreter",

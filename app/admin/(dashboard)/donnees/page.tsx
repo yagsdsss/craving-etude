@@ -38,6 +38,14 @@ const participantFields: FieldConfig[] = [
   { key: "sexe", label: "Sexe", type: "select", options: SEXE_OPTIONS },
 ];
 
+const qsuFields: FieldConfig[] = Array.from({ length: 10 }, (_, i) => ({
+  key: `qsu${i + 1}`,
+  label: `QSU ${i + 1} (1-7)`,
+  type: "number" as const,
+  min: 1,
+  max: 7,
+}));
+
 const seanceFields: FieldConfig[] = [
   { key: "participantCode", label: "Participant", type: "text", readOnly: true },
   { key: "semaine", label: "Semaine", type: "number", min: 1, max: 6 },
@@ -51,6 +59,10 @@ const seanceFields: FieldConfig[] = [
   { key: "rpeReel", label: "RPE (0-10)", type: "number", min: 0, max: 10 },
   { key: "heuresDepuisDerniereConso", label: "Heures depuis conso", type: "number", min: 0 },
   { key: "remarque", label: "Remarque", type: "textarea" },
+  ...qsuFields,
+  { key: "qsuScoreTotal", label: "Score QSU total", type: "number", readOnly: true },
+  { key: "qsuFacteur1", label: "QSU facteur 1", type: "number", readOnly: true },
+  { key: "qsuFacteur2", label: "QSU facteur 2", type: "number", readOnly: true },
 ];
 
 const carnetFields: FieldConfig[] = [
@@ -63,29 +75,26 @@ const carnetFields: FieldConfig[] = [
   { key: "evenementParticulier", label: "Événement particulier", type: "textarea" },
 ];
 
-const qsuFields: FieldConfig[] = Array.from({ length: 10 }, (_, i) => ({
-  key: `qsu${i + 1}`,
-  label: `QSU ${i + 1} (1-7)`,
+const fagerFields: FieldConfig[] = Array.from({ length: 6 }, (_, i) => ({
+  key: `fager${i + 1}`,
+  label: `Fagerström Q${i + 1} (indice option)`,
   type: "number" as const,
-  min: 1,
-  max: 7,
+  min: 0,
+  max: 3,
 }));
 
 const suiviFields: FieldConfig[] = [
   { key: "participantCode", label: "Participant", type: "text", readOnly: true },
   { key: "temps", label: "Temps", type: "select", options: TEMPS_OPTIONS },
-  { key: "scoreFagerstrom", label: "Fagerström (0-10)", type: "number", min: 0, max: 10 },
   { key: "consoMoyenneSemaine", label: "Conso moy./semaine", type: "number", min: 0 },
-  { key: "test6min", label: "Test 6 min (m)", type: "number", min: 0 },
   { key: "poids", label: "Poids (kg)", type: "number", min: 0 },
-  { key: "imc", label: "IMC", type: "number", min: 0 },
+  { key: "taille", label: "Taille (cm)", type: "number", min: 0 },
+  { key: "imc", label: "IMC", type: "number", readOnly: true },
   { key: "tourTaille", label: "Tour de taille (cm)", type: "number", min: 0 },
   { key: "envieArreter", label: "Envie d'arrêter (0-10)", type: "number", min: 0, max: 10 },
   { key: "capaciteReduireConso", label: "Capacité à réduire (0-10)", type: "number", min: 0, max: 10 },
-  ...qsuFields,
-  { key: "scoreCravingTrait", label: "Score QSU total", type: "number", readOnly: true },
-  { key: "qsuFacteur1", label: "QSU facteur 1", type: "number", readOnly: true },
-  { key: "qsuFacteur2", label: "QSU facteur 2", type: "number", readOnly: true },
+  ...fagerFields,
+  { key: "scoreFagerstrom", label: "Score Fagerström (auto)", type: "number", readOnly: true },
 ];
 
 const TABS = [
@@ -155,9 +164,9 @@ const TABS = [
         summaryFields={[
           "participantCode",
           "temps",
-          "scoreCravingTrait",
           "scoreFagerstrom",
           "poids",
+          "imc",
         ]}
       />
     ),

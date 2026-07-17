@@ -10,6 +10,31 @@ export const participantSchema = z.object({
   sousGroupe: z.enum(["A", "B"]),
 });
 
+const qsuItem = z.number().int().min(1).max(7);
+const fagerItem = z.number().int().min(0).max(3);
+
+const qsuFields = {
+  qsu1: qsuItem.nullable().optional(),
+  qsu2: qsuItem.nullable().optional(),
+  qsu3: qsuItem.nullable().optional(),
+  qsu4: qsuItem.nullable().optional(),
+  qsu5: qsuItem.nullable().optional(),
+  qsu6: qsuItem.nullable().optional(),
+  qsu7: qsuItem.nullable().optional(),
+  qsu8: qsuItem.nullable().optional(),
+  qsu9: qsuItem.nullable().optional(),
+  qsu10: qsuItem.nullable().optional(),
+};
+
+const fagerFields = {
+  fager1: fagerItem.nullable().optional(),
+  fager2: fagerItem.nullable().optional(),
+  fager3: fagerItem.nullable().optional(),
+  fager4: fagerItem.nullable().optional(),
+  fager5: fagerItem.nullable().optional(),
+  fager6: fagerItem.nullable().optional(),
+};
+
 export const mesureSeanceSchema = z.object({
   participantCode: z.string(),
   semaine: z.number().int().min(1).max(6),
@@ -22,6 +47,7 @@ export const mesureSeanceSchema = z.object({
   rpeReel: scale0to10.nullable().optional(),
   heuresDepuisDerniereConso: z.number().min(0).nullable().optional(),
   remarque: z.string().nullable().optional(),
+  ...qsuFields,
 });
 
 export const carnetJourSchema = z.object({
@@ -34,29 +60,16 @@ export const carnetJourSchema = z.object({
   evenementParticulier: z.string().nullable().optional(),
 });
 
-const qsuItem = z.number().int().min(1).max(7);
-
 export const mesureSuiviSchema = z.object({
   participantCode: z.string(),
   temps: z.enum(["T0", "T1", "T2"]),
-  scoreFagerstrom: z.number().int().min(0).max(10).nullable().optional(),
   consoMoyenneSemaine: z.number().min(0).nullable().optional(),
-  test6min: z.number().min(0).nullable().optional(),
   poids: z.number().min(0).nullable().optional(),
-  imc: z.number().min(0).nullable().optional(),
+  taille: z.number().min(0).nullable().optional(),
   tourTaille: z.number().min(0).nullable().optional(),
   envieArreter: scale0to10.nullable().optional(),
   capaciteReduireConso: scale0to10.nullable().optional(),
-  qsu1: qsuItem.nullable().optional(),
-  qsu2: qsuItem.nullable().optional(),
-  qsu3: qsuItem.nullable().optional(),
-  qsu4: qsuItem.nullable().optional(),
-  qsu5: qsuItem.nullable().optional(),
-  qsu6: qsuItem.nullable().optional(),
-  qsu7: qsuItem.nullable().optional(),
-  qsu8: qsuItem.nullable().optional(),
-  qsu9: qsuItem.nullable().optional(),
-  qsu10: qsuItem.nullable().optional(),
+  ...fagerFields,
 });
 
 // --- Schémas de mise à jour (back-office) : tous les champs optionnels, dates souples ---
@@ -81,6 +94,7 @@ export const mesureSeanceUpdateSchema = z.object({
   rpeReel: scale0to10.nullable().optional(),
   heuresDepuisDerniereConso: z.number().min(0).nullable().optional(),
   remarque: z.string().nullable().optional(),
+  ...qsuFields,
 });
 
 export const carnetJourUpdateSchema = z.object({
@@ -94,22 +108,11 @@ export const carnetJourUpdateSchema = z.object({
 
 export const mesureSuiviUpdateSchema = z.object({
   temps: z.enum(["T0", "T1", "T2"]).optional(),
-  scoreFagerstrom: z.number().int().min(0).max(10).nullable().optional(),
   consoMoyenneSemaine: z.number().min(0).nullable().optional(),
-  test6min: z.number().min(0).nullable().optional(),
   poids: z.number().min(0).nullable().optional(),
-  imc: z.number().min(0).nullable().optional(),
+  taille: z.number().min(0).nullable().optional(),
   tourTaille: z.number().min(0).nullable().optional(),
   envieArreter: scale0to10.nullable().optional(),
   capaciteReduireConso: scale0to10.nullable().optional(),
-  qsu1: qsuItem.nullable().optional(),
-  qsu2: qsuItem.nullable().optional(),
-  qsu3: qsuItem.nullable().optional(),
-  qsu4: qsuItem.nullable().optional(),
-  qsu5: qsuItem.nullable().optional(),
-  qsu6: qsuItem.nullable().optional(),
-  qsu7: qsuItem.nullable().optional(),
-  qsu8: qsuItem.nullable().optional(),
-  qsu9: qsuItem.nullable().optional(),
-  qsu10: qsuItem.nullable().optional(),
+  ...fagerFields,
 });

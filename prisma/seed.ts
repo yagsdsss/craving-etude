@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { computeQsuScores, QSU_ITEMS } from "../lib/qsu";
+import { computeFagerstromScore, FAGERSTROM_ITEMS } from "../lib/fagerstrom";
+import { computeImc } from "../lib/imc";
 
 const prisma = new PrismaClient();
 
@@ -85,6 +87,16 @@ async function main() {
         heureDebut.setUTCDate(heureDebut.getUTCDate() + (semaine - 1) * 7 + (numeroDansSemaine - 1) * 3);
         heureDebut.setUTCHours(randInt(9, 19), chance(0.5) ? 0 : 30);
 
+        // QSU-Brief rempli en fin de séance (baisse avec la progression)
+        const qsuBase = 5 - ((semaine - 1) / 5) * 2.5;
+        const qsuAnswers = Object.fromEntries(
+          QSU_ITEMS.map((item) => [
+            item.key,
+            chance(0.05) ? null : Math.round(clamp(qsuBase + randFloat(-1, 1), 1, 7)),
+          ])
+        );
+        const qsuScores = computeQsuScores(qsuAnswers);
+
         await prisma.mesureSeance.create({
           data: {
             participantCode: participant.code,
@@ -102,6 +114,8 @@ async function main() {
             remarque: chance(0.12)
               ? pick(["Séance difficile aujourd'hui.", "Bonne énergie.", "Léger mal de tête avant.", "Motivation en baisse."])
               : null,
+            ...qsuAnswers,
+            ...qsuScores,
           },
         });
       }
@@ -159,39 +173,39 @@ async function main() {
     for (const [index, temps] of (["T0", "T1", "T2"] as const).entries()) {
       const progression = index / 2; // 0, 0.5, 1
 
-      const fagerstromBase = isExperimental ? 6 - progression * 2 : 6 + randFloat(-0.3, 0.3);
-      const qsuBase = isExperimental ? 5 - progression * 2.5 : 5 + randFloat(-0.3, 0.3);
       const consoBase = isExperimental ? 110 - progression * 50 : 110 + randFloat(-5, 5);
-      const test6minBase = isExperimental ? 540 + progression * 60 : 540 + randFloat(-10, 10);
       const poidsBase = (isExperimental ? 78 - progression * 2 : 78) + randFloat(-8, 8);
+      const tailleCm = Math.round((165 + randFloat(0, 25)) * 10) / 10; // ~165-190 cm
       const tourTailleBase = (isExperimental ? 88 - progression * 2 : 88) + randFloat(-6, 6);
       const envieArreterBase = isExperimental ? 5 + progression * 3 : 5 + randFloat(-0.5, 0.5);
       const capaciteReduireBase = isExperimental ? 4 + progression * 4 : 4 + randFloat(-0.5, 0.5);
 
-      const qsuAnswers = Object.fromEntries(
-        QSU_ITEMS.map((item) => [
+      // Test de Fagerström : réponses aléatoires (indices d'option), score calculé côté API/lib
+      const fagerAnswers = Object.fromEntries(
+        FAGERSTROM_ITEMS.map((item) => [
           item.key,
-          chance(0.05) ? null : Math.round(clamp(qsuBase + randFloat(-1, 1), 1, 7)),
+          chance(0.05) ? null : randInt(0, item.options.length - 1),
         ])
       );
-      const qsuScores = computeQsuScores(qsuAnswers);
+      const scoreFagerstrom = computeFagerstromScore(fagerAnswers);
+      const poids = chance(0.05) ? null : Math.round(poidsBase * 10) / 10;
+      const imc = computeImc(poids, tailleCm);
 
       await prisma.mesureSuivi.create({
         data: {
           participantCode: participant.code,
           temps,
-          scoreFagerstrom: chance(0.05) ? null : Math.round(clamp(fagerstromBase + randFloat(-0.5, 0.5), 0, 10)),
           consoMoyenneSemaine: chance(0.05) ? null : Math.round(clamp(consoBase, 0, 200)),
-          test6min: chance(0.08) ? null : Math.round(clamp(test6minBase, 300, 800)),
-          poids: chance(0.05) ? null : Math.round(poidsBase * 10) / 10,
-          imc: chance(0.05) ? null : Math.round((poidsBase / (1.75 * 1.75)) * 10) / 10,
+          poids,
+          taille: tailleCm,
+          imc,
           tourTaille: chance(0.08) ? null : Math.round(tourTailleBase * 10) / 10,
           envieArreter: chance(0.05) ? null : Math.round(clamp(envieArreterBase + randFloat(-1, 1), 0, 10)),
           capaciteReduireConso: chance(0.05)
             ? null
             : Math.round(clamp(capaciteReduireBase + randFloat(-1, 1), 0, 10)),
-          ...qsuAnswers,
-          ...qsuScores,
+          ...fagerAnswers,
+          scoreFagerstrom,
         },
       });
     }

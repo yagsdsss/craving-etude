@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mesureSeanceSchema } from "@/lib/schemas";
+import { computeQsuScores } from "@/lib/qsu";
 
 export async function GET() {
   const mesures = await prisma.mesureSeance.findMany({
@@ -27,6 +28,16 @@ export async function POST(request: NextRequest) {
   const { cravingAvant, cravingApres, heureDebut, ...rest } = parsed.data;
   const deltaCraving =
     cravingAvant != null && cravingApres != null ? cravingApres - cravingAvant : null;
+  const qsuScores = computeQsuScores(rest);
+
+  const data = {
+    ...rest,
+    ...qsuScores,
+    cravingAvant,
+    cravingApres,
+    deltaCraving,
+    heureDebut: heureDebut ? new Date(heureDebut) : null,
+  };
 
   const mesure = await prisma.mesureSeance.upsert({
     where: {
@@ -36,20 +47,8 @@ export async function POST(request: NextRequest) {
         numeroSeance: rest.numeroSeance,
       },
     },
-    create: {
-      ...rest,
-      cravingAvant,
-      cravingApres,
-      deltaCraving,
-      heureDebut: heureDebut ? new Date(heureDebut) : null,
-    },
-    update: {
-      ...rest,
-      cravingAvant,
-      cravingApres,
-      deltaCraving,
-      heureDebut: heureDebut ? new Date(heureDebut) : null,
-    },
+    create: data,
+    update: data,
   });
 
   return NextResponse.json(mesure, { status: 201 });

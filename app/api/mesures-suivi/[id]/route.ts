@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mesureSuiviUpdateSchema } from "@/lib/schemas";
-import { computeQsuScores } from "@/lib/qsu";
+import { computeFagerstromScore } from "@/lib/fagerstrom";
+import { computeImc } from "@/lib/imc";
 import { isSessionTokenValid, SESSION_COOKIE } from "@/lib/auth";
 
 async function requireAdmin(request: NextRequest) {
@@ -9,18 +10,7 @@ async function requireAdmin(request: NextRequest) {
   return isSessionTokenValid(token);
 }
 
-const QSU_KEYS = [
-  "qsu1",
-  "qsu2",
-  "qsu3",
-  "qsu4",
-  "qsu5",
-  "qsu6",
-  "qsu7",
-  "qsu8",
-  "qsu9",
-  "qsu10",
-] as const;
+const FAGER_KEYS = ["fager1", "fager2", "fager3", "fager4", "fager5", "fager6"] as const;
 
 export async function PATCH(
   request: NextRequest,
@@ -42,16 +32,21 @@ export async function PATCH(
     return NextResponse.json({ error: "Mesure introuvable" }, { status: 404 });
   }
 
-  // Recalcul des scores QSU à partir des items finaux (existants + modifiés)
-  const finalItems: Record<string, number | null> = {};
-  for (const key of QSU_KEYS) {
-    finalItems[key] = parsed.data[key] !== undefined ? parsed.data[key]! : existing[key];
+  // Recalcul du score Fagerström à partir des items finaux (existants + modifiés)
+  const finalFager: Record<string, number | null> = {};
+  for (const key of FAGER_KEYS) {
+    finalFager[key] = parsed.data[key] !== undefined ? parsed.data[key]! : existing[key];
   }
-  const scores = computeQsuScores(finalItems);
+  const scoreFagerstrom = computeFagerstromScore(finalFager);
+
+  // Recalcul de l'IMC à partir du poids et de la taille finaux
+  const poids = parsed.data.poids !== undefined ? parsed.data.poids : existing.poids;
+  const taille = parsed.data.taille !== undefined ? parsed.data.taille : existing.taille;
+  const imc = computeImc(poids, taille);
 
   const mesure = await prisma.mesureSuivi.update({
     where: { id: Number(id) },
-    data: { ...parsed.data, ...scores },
+    data: { ...parsed.data, scoreFagerstrom, imc },
   });
 
   return NextResponse.json(mesure);

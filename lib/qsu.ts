@@ -25,13 +25,14 @@ function moyenne(values: (number | null | undefined)[]): number | null {
   return Math.round((present.reduce((a, b) => a + b, 0) / present.length) * 100) / 100;
 }
 
-export function computeQsuScores(items: Record<string, number | null | undefined>) {
-  const all = QSU_ITEMS.map((i) => items[i.key]);
-  const f1 = FACTEUR_1.map((k) => items[k]);
-  const f2 = FACTEUR_2.map((k) => items[k]);
+export function computeQsuScores(items: Record<string, unknown>) {
+  const num = (v: unknown) => (typeof v === "number" ? v : null);
+  const all = QSU_ITEMS.map((i) => num(items[i.key]));
+  const f1 = FACTEUR_1.map((k) => num(items[k]));
+  const f2 = FACTEUR_2.map((k) => num(items[k]));
 
   return {
-    scoreCravingTrait: moyenne(all),
+    qsuScoreTotal: moyenne(all),
     qsuFacteur1: moyenne(f1),
     qsuFacteur2: moyenne(f2),
   };
