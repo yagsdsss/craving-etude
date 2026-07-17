@@ -14,13 +14,17 @@ type Data = {
 };
 
 // --- Conversion de la consommation en équivalent cigarette ------------------
-// Puff = Adalya 20K → 20 000 bouffées quand le goût est utilisé à 100 %.
-// PUFFS_PAR_CIGARETTE : hypothèse d'équivalence (bouffées ≈ 1 cigarette).
-// ⚠️ Valeur à valider / citer dans le mémoire — ajuste-la ici si besoin, tout
+// Équivalence fondée sur la nicotine (plus défendable qu'un décompte de bouffées).
+// Puff Adalya 20K : 25 mL d'e-liquide à 20 mg/mL → 500 mg de nicotine pour 100 %
+// du goût utilisé. Rapporté au contenu nicotinique d'une cigarette (~10 mg), on
+// obtient 100 % ≈ 50 cigarettes, soit 1 % ≈ 0,5 cigarette.
+// ⚠️ MG_NICOTINE_PAR_CIGARETTE est une hypothèse (fourchette usuelle 8-12 mg de
+// contenu par cigarette) — à valider / citer dans le mémoire. Ajuste-la ici, tout
 // le tableau de bord recalcule automatiquement.
-const PUFFS_TOTAL_ADALYA_20K = 20000;
-const PUFFS_PAR_CIGARETTE = 20; // 1 cigarette ≈ 20 bouffées → 1 % ≈ 10 cigarettes
-const CIGARETTES_PAR_POURCENT_PUFF = PUFFS_TOTAL_ADALYA_20K / 100 / PUFFS_PAR_CIGARETTE;
+const MG_NICOTINE_PUFF_100 = 25 * 20; // 500 mg de nicotine pour 100 % du goût
+const MG_NICOTINE_PAR_CIGARETTE = 10; // contenu nicotinique moyen d'une cigarette
+const CIGARETTES_PAR_POURCENT_PUFF =
+  MG_NICOTINE_PUFF_100 / 100 / MG_NICOTINE_PAR_CIGARETTE; // = 0,5 cig par 1 %
 
 /**
  * Consommation quotidienne convertie en équivalent cigarette :
