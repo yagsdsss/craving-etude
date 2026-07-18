@@ -63,10 +63,11 @@ export const carnetJourSchema = z.object({
 export const mesureSuiviSchema = z.object({
   participantCode: z.string(),
   temps: z.enum(["T0", "T1", "T2"]),
-  consoMoyenneSemaine: z.number().min(0).nullable().optional(),
+  consoPuffSemaine: z.number().min(0).nullable().optional(),
+  consoSnusSemaine: z.number().min(0).nullable().optional(),
+  consoCigaretteSemaine: z.number().min(0).nullable().optional(),
   poids: z.number().min(0).nullable().optional(),
   taille: z.number().min(0).nullable().optional(),
-  tourTaille: z.number().min(0).nullable().optional(),
   envieArreter: scale0to10.nullable().optional(),
   capaciteReduireConso: scale0to10.nullable().optional(),
   ...fagerFields,
@@ -108,10 +109,11 @@ export const carnetJourUpdateSchema = z.object({
 
 export const mesureSuiviUpdateSchema = z.object({
   temps: z.enum(["T0", "T1", "T2"]).optional(),
-  consoMoyenneSemaine: z.number().min(0).nullable().optional(),
+  consoPuffSemaine: z.number().min(0).nullable().optional(),
+  consoSnusSemaine: z.number().min(0).nullable().optional(),
+  consoCigaretteSemaine: z.number().min(0).nullable().optional(),
   poids: z.number().min(0).nullable().optional(),
   taille: z.number().min(0).nullable().optional(),
-  tourTaille: z.number().min(0).nullable().optional(),
   envieArreter: scale0to10.nullable().optional(),
   capaciteReduireConso: scale0to10.nullable().optional(),
   ...fagerFields,

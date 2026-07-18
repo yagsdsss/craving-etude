@@ -173,10 +173,10 @@ async function main() {
     for (const [index, temps] of (["T0", "T1", "T2"] as const).entries()) {
       const progression = index / 2; // 0, 0.5, 1
 
-      const consoBase = isExperimental ? 110 - progression * 50 : 110 + randFloat(-5, 5);
+      const puffBase = isExperimental ? 5 - progression * 2 : 5 + randFloat(-1, 1);
+      const cigBase = isExperimental ? 6 - progression * 3 : 6 + randFloat(-1, 1);
       const poidsBase = (isExperimental ? 78 - progression * 2 : 78) + randFloat(-8, 8);
       const tailleCm = Math.round((165 + randFloat(0, 25)) * 10) / 10; // ~165-190 cm
-      const tourTailleBase = (isExperimental ? 88 - progression * 2 : 88) + randFloat(-6, 6);
       const envieArreterBase = isExperimental ? 5 + progression * 3 : 5 + randFloat(-0.5, 0.5);
       const capaciteReduireBase = isExperimental ? 4 + progression * 4 : 4 + randFloat(-0.5, 0.5);
 
@@ -195,11 +195,12 @@ async function main() {
         data: {
           participantCode: participant.code,
           temps,
-          consoMoyenneSemaine: chance(0.05) ? null : Math.round(clamp(consoBase, 0, 200)),
+          consoPuffSemaine: chance(0.15) ? null : Math.round(clamp(puffBase + randFloat(-1, 1), 0, 20)),
+          consoSnusSemaine: chance(0.6) ? null : randInt(0, 3),
+          consoCigaretteSemaine: chance(0.2) ? null : Math.round(clamp(cigBase + randFloat(-1, 1), 0, 20)),
           poids,
           taille: tailleCm,
           imc,
-          tourTaille: chance(0.08) ? null : Math.round(tourTailleBase * 10) / 10,
           envieArreter: chance(0.05) ? null : Math.round(clamp(envieArreterBase + randFloat(-1, 1), 0, 10)),
           capaciteReduireConso: chance(0.05)
             ? null

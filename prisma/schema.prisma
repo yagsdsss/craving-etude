@@ -123,13 +123,16 @@ model MesureSuivi {
   participantCode String
   temps           Temps
 
-  consoMoyenneSemaine Float?
-  poids               Float?
+  /// Consommation moyenne déclarée par semaine, par type de produit (plusieurs possibles) :
+  consoPuffSemaine      Float? // nombre de puffs (dispositifs) / semaine
+  consoSnusSemaine      Float? // nombre de paquets de snus / semaine
+  consoCigaretteSemaine Float? // nombre de paquets de cigarettes (20) / semaine
+
+  poids  Float?
   /// Taille en cm — sert au calcul automatique de l'IMC
-  taille              Float?
+  taille Float?
   /// IMC calculé automatiquement à partir du poids et de la taille
-  imc                 Float?
-  tourTaille          Float?
+  imc    Float?
 
   /// Envie d'arrêter la nicotine (0 = aucune envie, 10 = envie maximale)
   envieArreter Int?

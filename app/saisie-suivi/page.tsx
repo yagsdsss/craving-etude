@@ -9,10 +9,11 @@ type Participant = { code: string };
 const emptyForm = {
   participantCode: "",
   temps: "T0" as "T0" | "T1" | "T2",
-  consoMoyenneSemaine: "",
+  consoPuffSemaine: "",
+  consoSnusSemaine: "",
+  consoCigaretteSemaine: "",
   poids: "",
   taille: "",
-  tourTaille: "",
   envieArreter: "",
   capaciteReduireConso: "",
 };
@@ -61,10 +62,11 @@ export default function SaisieSuiviPage() {
     const payload = {
       participantCode: form.participantCode,
       temps: form.temps,
-      consoMoyenneSemaine: toNumberOrNull(form.consoMoyenneSemaine),
+      consoPuffSemaine: toNumberOrNull(form.consoPuffSemaine),
+      consoSnusSemaine: toNumberOrNull(form.consoSnusSemaine),
+      consoCigaretteSemaine: toNumberOrNull(form.consoCigaretteSemaine),
       poids: toNumberOrNull(form.poids),
       taille: toNumberOrNull(form.taille),
-      tourTaille: toNumberOrNull(form.tourTaille),
       envieArreter: toNumberOrNull(form.envieArreter),
       capaciteReduireConso: toNumberOrNull(form.capaciteReduireConso),
       ...fager,
@@ -128,9 +130,22 @@ export default function SaisieSuiviPage() {
             </div>
           </div>
 
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              Consommation moyenne par semaine (remplis ce qui s&apos;applique)
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <NumberField label="Puffs / semaine" hint="nombre de dispositifs" {...field("consoPuffSemaine")} />
+              <NumberField label="Paquets de snus / semaine" {...field("consoSnusSemaine")} />
+              <NumberField
+                label="Paquets de cigarettes / semaine"
+                hint="1 paquet = 20 cigarettes"
+                {...field("consoCigaretteSemaine")}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
-            <NumberField label="Conso moyenne / semaine" {...field("consoMoyenneSemaine")} />
-            <NumberField label="Tour de taille (cm)" {...field("tourTaille")} />
             <NumberField label="Poids (kg)" {...field("poids")} />
             <NumberField label="Taille (cm)" {...field("taille")} />
             <div>
@@ -168,9 +183,14 @@ export default function SaisieSuiviPage() {
             <div className="space-y-5">
               {FAGERSTROM_ITEMS.map((item, i) => (
                 <div key={item.key}>
-                  <p className="mb-2 text-sm text-slate-700">
+                  <p className="mb-1 text-sm text-slate-700">
                     {i + 1}. {item.texte}
                   </p>
+                  {item.key === "fager4" && (
+                    <p className="mb-2 text-xs italic text-slate-400">
+                      Équivalence indicative pour un vapoteur : 10 % de puff ≈ 5 cigarettes.
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {item.options.map((opt, idx) => {
                       const selected = fager[item.key] === idx;
