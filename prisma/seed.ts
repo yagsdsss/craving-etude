@@ -125,29 +125,51 @@ async function main() {
   console.log("Génération du carnet quotidien...");
   for (const participant of participants) {
     const isExperimental = participant.groupe === "EXPERIMENTAL";
+    const isP07 = participant.code === "P07";
 
     for (let semaine = 1; semaine <= 6; semaine++) {
       for (let jour = 0; jour < 7; jour++) {
-        if (chance(0.04)) continue; // journée non renseignée
+        // P07: oublie plus souvent (20% au lieu de 4%), mais inconsistant
+        const skipChance = isP07 ? 0.2 : 0.04;
+        if (chance(skipChance)) continue; // journée non renseignée
 
         const date = new Date(studyStart);
         date.setUTCDate(date.getUTCDate() + (semaine - 1) * 7 + jour);
 
         const progression = (semaine - 1) / 5;
-        const baseConso = isExperimental ? 20 - progression * 10 : 20 + randFloat(-2, 2);
-        const consoJour = clamp(baseConso + randFloat(-4, 4), 0, 40);
+
+        // P07: consommation chaotique (stagne/remonte, pas de déclin régulier)
+        let baseConso: number;
+        if (isP07) {
+          if (semaine <= 2) baseConso = 18;
+          else if (semaine <= 3) baseConso = 20; // remonte
+          else if (semaine === 4) baseConso = 19;
+          else baseConso = 20; // stagne à 20, ne baisse pas vraiment
+        } else {
+          baseConso = isExperimental ? 20 - progression * 10 : 20 + randFloat(-2, 2);
+        }
+        const consoJour = clamp(baseConso + randFloat(-5, 5), 0, 40);
 
         const cigarettes = chance(0.08) ? null : Math.round(consoJour * 0.7);
-        // % du goût puff utilisé dans la journée (baisse avec la progression pour le groupe exp.)
+        // % du goût puff utilisé dans la journée
         const puffPourcentage = chance(0.08)
           ? null
           : Math.round(clamp((isExperimental ? 6 - progression * 3 : 6) + randFloat(-2, 2), 0, 100));
         const snusSachets = chance(0.5) ? (chance(0.08) ? null : Math.round(consoJour * 0.05)) : 0;
 
-        const cravingBase = isExperimental ? 6 - progression * 2.5 : 6 + randFloat(-0.5, 0.5);
+        // P07: envie augmente après le sport mais stagne globalement
+        let cravingBase: number;
+        if (isP07) {
+          // Craving élevé et peu de baisse sur 6 semaines
+          if (semaine <= 2) cravingBase = 7;
+          else if (semaine <= 4) cravingBase = 7.5;
+          else cravingBase = 7.2; // remonte légèrement, stagne
+        } else {
+          cravingBase = isExperimental ? 6 - progression * 2.5 : 6 + randFloat(-0.5, 0.5);
+        }
         const cravingMoyenJour = chance(0.06)
           ? null
-          : Math.round(clamp(cravingBase + randFloat(-1, 1), 0, 10));
+          : Math.round(clamp(cravingBase + randFloat(-1, 1.5), 0, 10));
 
         await prisma.carnetJour.create({
           data: {
@@ -157,9 +179,16 @@ async function main() {
             puffPourcentage,
             snusSachets,
             cravingMoyenJour,
-            evenementParticulier: chance(0.06)
-              ? pick(["Soirée entre amis, envie plus forte.", "Journée stressante au travail.", "Journée calme, pas d'envie particulière."])
-              : null,
+            evenementParticulier: isP07 && chance(0.15)
+              ? pick([
+                  "Envie plus forte après le sport.",
+                  "Journée stressante, envie augmente.",
+                  "Séance cardio, beaucoup d'envie après.",
+                  "Muscu + envie forte, c'est lié?",
+                ])
+              : chance(0.06)
+                ? pick(["Soirée entre amis, envie plus forte.", "Journée stressante au travail.", "Journée calme, pas d'envie particulière."])
+                : null,
           },
         });
       }
