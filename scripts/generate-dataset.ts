@@ -208,7 +208,7 @@ type SeanceRow = {
   rpeReel: number | null;
   heuresDepuisDerniereConso: number | null;
   remarque: string | null;
-} & Record<string, number | null>;
+} & Record<string, unknown>;
 type SuiviRow = {
   participantCode: string;
   temps: "T0" | "T1" | "T2";
@@ -220,7 +220,7 @@ type SuiviRow = {
   imc: number | null;
   envieArreter: number | null;
   capaciteReduireConso: number | null;
-} & Record<string, number | null>;
+} & Record<string, unknown>;
 
 const CARNETS: CarnetRow[] = [];
 const SEANCES: SeanceRow[] = [];
