@@ -11,18 +11,11 @@ type Action = {
 
 const ACTIONS: Action[] = [
   {
-    id: "carnet",
-    titre: "Mettre à jour le carnet de P07",
+    id: "charger",
+    titre: "Charger les données des profils",
     description:
-      "Régénère le carnet quotidien de P07 (jours oubliés, envie qui stagne autour de 7/10). Ne touche à aucun autre participant.",
-    endpoint: "/api/admin/reseed-p07",
-  },
-  {
-    id: "seances",
-    titre: "Mettre à jour les séances de P07",
-    description:
-      "Régénère les 12 séances de P07 du 1ᵉʳ juillet au 10 août 2026 (envie qui remonte après le sport). Ne touche à aucun autre participant.",
-    endpoint: "/api/admin/regen-seances-p07",
+      "Remplace le carnet, les séances et les mesures T0/T1/T2 de TOUS les participants par le jeu de données réaliste (profils de personnalité). Les participants eux-mêmes ne sont pas modifiés. Action à confirmer : elle écrase les données existantes.",
+    endpoint: "/api/admin/charger-donnees",
   },
 ];
 
@@ -31,6 +24,9 @@ export default function OutilsP07() {
   const [resultats, setResultats] = useState<Record<string, string>>({});
 
   async function lancer(action: Action) {
+    if (!window.confirm(`${action.titre}\n\nCette action écrase les données existantes. Continuer ?`)) {
+      return;
+    }
     setEnCours(action.id);
     setResultats((r) => ({ ...r, [action.id]: "" }));
     try {
