@@ -14,6 +14,14 @@ export type CarnetRow = {
 export type SeanceRow = Record<string, unknown> & { participantCode: string; heureDebut: string };
 export type SuiviRow = Record<string, unknown> & { participantCode: string; temps: string };
 
+export type ParticipantRow = {
+  code: string;
+  groupe: "EXPERIMENTAL" | "CONTROLE";
+  sousGroupe: "A" | "B";
+  age: number;
+  sexe: "HOMME" | "FEMME" | "AUTRE";
+};
+
 export const PROFILS_ASSIGNES: Record<string, string> = {
   "P01": "motive",
   "P03": "regulier",
@@ -36,6 +44,149 @@ export const PROFILS_ASSIGNES: Record<string, string> = {
   "P18": "weekendCtrl",
   "P20": "legerStable"
 };
+
+export const PARTICIPANTS: ParticipantRow[] = [
+  {
+    "code": "P01",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 25,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P02",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 30,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P03",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 21,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P04",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 23,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P05",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 25,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P06",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 25,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P07",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 27,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P08",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 26,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P09",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 20,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P10",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 19,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P11",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 19,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P12",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 23,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P13",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 25,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P14",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 30,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P15",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 19,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P16",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 26,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P17",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 29,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P18",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 30,
+    "sexe": "HOMME"
+  },
+  {
+    "code": "P19",
+    "groupe": "EXPERIMENTAL",
+    "sousGroupe": "A",
+    "age": 24,
+    "sexe": "FEMME"
+  },
+  {
+    "code": "P20",
+    "groupe": "CONTROLE",
+    "sousGroupe": "B",
+    "age": 24,
+    "sexe": "FEMME"
+  }
+];
 
 export const CARNETS: CarnetRow[] = [
   {

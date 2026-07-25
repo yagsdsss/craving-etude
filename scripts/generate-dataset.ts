@@ -41,11 +41,17 @@ type Participant = {
   code: string;
   groupe: "EXPERIMENTAL" | "CONTROLE";
   sousGroupe: "A" | "B";
+  age: number;
+  sexe: "HOMME" | "FEMME" | "AUTRE";
 };
+// RNG dédié à l'âge/sexe pour ne PAS décaler le flux principal (données inchangées).
+const rngDemo = mulberry32(4242);
 const PARTICIPANTS: Participant[] = Array.from({ length: 20 }, (_, i) => ({
   code: `P${String(i + 1).padStart(2, "0")}`,
   groupe: i % 2 === 0 ? "EXPERIMENTAL" : "CONTROLE",
   sousGroupe: i % 2 === 0 ? "A" : "B",
+  age: Math.floor(rngDemo() * 13) + 18, // 18..30
+  sexe: rngDemo() < 0.5 ? "HOMME" : rngDemo() < 0.9 ? "FEMME" : "AUTRE",
 }));
 
 // ---------------------------------------------------------------------------
@@ -397,7 +403,17 @@ ${"}"};
 export type SeanceRow = Record<string, unknown> & { participantCode: string; heureDebut: string };
 export type SuiviRow = Record<string, unknown> & { participantCode: string; temps: string };
 
+export type ParticipantRow = {
+  code: string;
+  groupe: "EXPERIMENTAL" | "CONTROLE";
+  sousGroupe: "A" | "B";
+  age: number;
+  sexe: "HOMME" | "FEMME" | "AUTRE";
+};
+
 export const PROFILS_ASSIGNES: Record<string, string> = ${JSON.stringify(ASSIGNATION, null, 2)};
+
+export const PARTICIPANTS: ParticipantRow[] = ${JSON.stringify(PARTICIPANTS, null, 2)};
 
 export const CARNETS: CarnetRow[] = ${JSON.stringify(CARNETS, null, 2)};
 

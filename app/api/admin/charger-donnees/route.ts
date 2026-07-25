@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSessionTokenValid, SESSION_COOKIE } from "@/lib/auth";
-import { CARNETS, SEANCES, SUIVIS } from "@/lib/donnees-profils";
+import { CARNETS, SEANCES, SUIVIS, PARTICIPANTS } from "@/lib/donnees-profils";
 
 // Route one-shot : remplace le carnet, les séances et les mesures de suivi de
 // TOUS les participants par le jeu de données figé (profils) généré hors-ligne
@@ -46,6 +46,15 @@ export async function POST(request: NextRequest) {
     await prisma.mesureSeance.deleteMany();
     await prisma.carnetJour.deleteMany();
     await prisma.mesureSuivi.deleteMany();
+
+    // On s'assure que les 20 participants existent (sinon la clé étrangère saute).
+    for (const p of PARTICIPANTS) {
+      await prisma.participant.upsert({
+        where: { code: p.code },
+        create: p as never,
+        update: { groupe: p.groupe, sousGroupe: p.sousGroupe, age: p.age, sexe: p.sexe } as never,
+      });
+    }
 
     const nCarnets = await createInChunks(
       carnets,
