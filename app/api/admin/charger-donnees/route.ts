@@ -8,9 +8,27 @@ import { CARNETS, SEANCES, SUIVIS } from "@/lib/donnees-profils";
 // via scripts/generate-dataset.ts. Ne touche pas aux participants eux-mêmes.
 // À retirer après usage.
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 async function requireAdmin(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   return isSessionTokenValid(token);
+}
+
+// Insertion par petits lots : évite la limite de variables SQLite et les
+// timeouts de passerelle sur un gros insert unique.
+async function createInChunks<T>(
+  rows: T[],
+  create: (batch: T[]) => Promise<{ count: number }>,
+  chunkSize: number
+) {
+  let count = 0;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const res = await create(rows.slice(i, i + chunkSize));
+    count += res.count;
+  }
+  return count;
 }
 
 export async function POST(request: NextRequest) {
@@ -18,24 +36,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  // Conversion des dates (stockées en ISO string dans le fichier figé).
-  const carnets = CARNETS.map((r) => ({ ...r, date: new Date(r.date) }));
-  const seances = SEANCES.map((r) => ({ ...r, heureDebut: new Date(r.heureDebut as string) }));
-  const suivis = SUIVIS.map((r) => ({ ...r }));
+  try {
+    // Conversion des dates (stockées en ISO string dans le fichier figé).
+    const carnets = CARNETS.map((r) => ({ ...r, date: new Date(r.date) }));
+    const seances = SEANCES.map((r) => ({ ...r, heureDebut: new Date(r.heureDebut as string) }));
+    const suivis = SUIVIS.map((r) => ({ ...r }));
 
-  const result = await prisma.$transaction([
-    prisma.mesureSeance.deleteMany(),
-    prisma.carnetJour.deleteMany(),
-    prisma.mesureSuivi.deleteMany(),
-    prisma.carnetJour.createMany({ data: carnets as never }),
-    prisma.mesureSeance.createMany({ data: seances as never }),
-    prisma.mesureSuivi.createMany({ data: suivis as never }),
-  ]);
+    // On efface d'abord (les 3 tables référencent le participant, jamais l'inverse).
+    await prisma.mesureSeance.deleteMany();
+    await prisma.carnetJour.deleteMany();
+    await prisma.mesureSuivi.deleteMany();
 
-  return NextResponse.json({
-    ok: true,
-    carnets: result[3].count,
-    seances: result[4].count,
-    suivis: result[5].count,
-  });
+    const nCarnets = await createInChunks(
+      carnets,
+      (b) => prisma.carnetJour.createMany({ data: b as never }),
+      100
+    );
+    const nSeances = await createInChunks(
+      seances,
+      (b) => prisma.mesureSeance.createMany({ data: b as never }),
+      40
+    );
+    const nSuivis = await createInChunks(
+      suivis,
+      (b) => prisma.mesureSuivi.createMany({ data: b as never }),
+      50
+    );
+
+    return NextResponse.json({ ok: true, carnets: nCarnets, seances: nSeances, suivis: nSuivis });
+  } catch (e) {
+    // Renvoie le vrai message d'erreur en JSON (sinon la route plante en 500 vide).
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 500 }
+    );
+  }
 }

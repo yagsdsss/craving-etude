@@ -31,7 +31,14 @@ export default function OutilsP07() {
     setResultats((r) => ({ ...r, [action.id]: "" }));
     try {
       const res = await fetch(action.endpoint, { method: "POST" });
-      const data = await res.json();
+      const texte = await res.text();
+      let data: unknown = texte;
+      try {
+        data = texte ? JSON.parse(texte) : { error: "réponse vide du serveur" };
+      } catch {
+        // réponse non-JSON (page d'erreur HTML, etc.) : on garde le texte brut.
+        data = { error: texte.slice(0, 300) || "réponse vide du serveur" };
+      }
       setResultats((r) => ({
         ...r,
         [action.id]: res.ok
