@@ -17,9 +17,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/donnees" className="text-sm text-slate-600 hover:text-slate-900">
               Données
             </Link>
-            <Link href="/admin/outils" className="text-sm text-slate-600 hover:text-slate-900">
-              Outils
-            </Link>
           </div>
           <LogoutButton />
         </div>
