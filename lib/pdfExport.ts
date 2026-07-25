@@ -27,6 +27,17 @@ const MARGIN = 40;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const FIELDS_PER_LINE = 3;
 
+// Champs volontairement exclus de l'export PDF :
+// - dates de chaque donnée (date, heure de séance, date de création)
+// - remarques / notes en texte libre
+const CHAMPS_EXCLUS = new Set([
+  "date",
+  "heureDebut",
+  "createdAt",
+  "remarque",
+  "evenementParticulier",
+]);
+
 function addSection(doc: PDFKit.PDFDocument, title: string, rows: Record<string, unknown>[]) {
   doc.addPage();
   doc.fontSize(16).font("Helvetica-Bold").fillColor("#0f172a").text(title);
@@ -43,7 +54,7 @@ function addSection(doc: PDFKit.PDFDocument, title: string, rows: Record<string,
     return;
   }
 
-  const fields = Object.keys(rows[0]);
+  const fields = Object.keys(rows[0]).filter((f) => !CHAMPS_EXCLUS.has(f));
   const fieldChunks = chunk(fields, FIELDS_PER_LINE);
   const colWidth = CONTENT_WIDTH / FIELDS_PER_LINE;
 
