@@ -33,6 +33,13 @@ const chance = (p: number) => rng() < p;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const pick = <T>(arr: T[]): T => arr[Math.floor(rng() * arr.length)];
+// Tirage normal (Box-Muller) : distributions réalistes qui se chevauchent,
+// contrairement à un tirage uniforme borné qui sépare artificiellement les groupes.
+const randNormal = (mu: number, sigma: number) => {
+  const u1 = Math.max(rng(), 1e-9);
+  const u2 = rng();
+  return mu + sigma * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+};
 
 // ---------------------------------------------------------------------------
 // Participants (mêmes règles que le seed : P01..P20, pair=expérimental/A)
@@ -286,6 +293,11 @@ for (const participant of PARTICIPANTS) {
     const premiere = participant.sousGroupe === "A" ? "CARDIO" : "MUSCULATION";
     const deuxieme = participant.sousGroupe === "A" ? "MUSCULATION" : "CARDIO";
 
+    // Réactivité propre au participant : certains voient leur envie monter après
+    // l'effort, d'autres non. Cette variabilité inter-individuelle fait que les
+    // distributions cardio/musculation se recouvrent largement (taille d'effet modérée).
+    const sensibiliteIndiv = randNormal(0, 0.9);
+
     for (let semaine = 1; semaine <= 6; semaine++) {
       for (const [numeroDansSemaine, ordre] of [
         [1, "PREMIERE"],
@@ -299,9 +311,12 @@ for (const participant of PARTICIPANTS) {
           ? null
           : Math.round(clamp(cravAvantBase + rand(-1, 1), 0, 10));
 
-        // Après la séance : la MUSCULATION fait monter l'envie, tandis que le
-        // CARDIO la laisse globalement inchangée (delta centré sur 0).
-        const delta = modalite === "MUSCULATION" ? rand(0.3, 2.5) : rand(-0.9, 0.9);
+        // Après la séance : la MUSCULATION fait un peu monter l'envie, le CARDIO
+        // la laisse globalement inchangée. L'écart entre modalités reste faible
+        // devant la variabilité individuelle -> taille d'effet modérée (d ≈ 0,3-0,4)
+        // et distributions qui se chevauchent, comme dans une vraie étude.
+        const effetModalite = modalite === "MUSCULATION" ? 0.35 : -0.1;
+        const delta = randNormal(effetModalite + sensibiliteIndiv, 1.6);
         const cravingApres =
           cravingAvant === null || chance(0.04)
             ? null

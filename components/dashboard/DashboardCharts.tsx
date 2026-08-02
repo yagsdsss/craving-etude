@@ -170,7 +170,10 @@ export default function DashboardCharts({
         </ResponsiveContainer>
         <div className="mt-4">
           <StatLine label="n cardio / musculation" value={`${delta.nCardio} / ${delta.nMuscu}`} />
-          <StatLine label="d de Cohen (groupes indépendants)" value={fmt(delta.cohensD)} />
+          <StatLine
+            label="d de Cohen (musculation vs cardio)"
+            value={fmt(delta.cohensD)}
+          />
         </div>
       </Card>
 

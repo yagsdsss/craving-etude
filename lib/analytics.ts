@@ -89,7 +89,9 @@ export function deltaParModalite(seances: MesureSeance[]) {
         ecartType: round(stdDev(muscu)) ?? 0,
       },
     ],
-    cohensD: round(cohensDIndependent(cardio, muscu)),
+    // Ordre (musculation, cardio) : un d positif signifie que la musculation
+    // fait davantage monter l'envie que le cardio.
+    cohensD: round(cohensDIndependent(muscu, cardio)),
     nCardio: cardio.length,
     nMuscu: muscu.length,
   };
