@@ -64,6 +64,18 @@ type Props = {
   };
   qsuSemaine: { semaine: string; score: number | null }[];
   consommation: { semaine: string; experimental: number | null; controle: number | null }[];
+  envieSemaine: { semaine: string; experimental: number | null; controle: number | null }[];
+  motivation: {
+    chart: {
+      temps: string;
+      envieExp: number | null;
+      envieCtrl: number | null;
+      capaciteExp: number | null;
+      capaciteCtrl: number | null;
+    }[];
+    evolutionEnvieExp: number | null;
+    evolutionCapaciteExp: number | null;
+  };
   trajectoires: Record<string, number | string | null>[];
   participantCodes: string[];
   presence: { code: string; tauxPresence: number | null }[];
@@ -109,6 +121,8 @@ export default function DashboardCharts({
   rpe,
   qsuSemaine,
   consommation,
+  envieSemaine,
+  motivation,
   trajectoires,
   participantCodes,
   presence,
@@ -210,6 +224,97 @@ export default function DashboardCharts({
         </ResponsiveContainer>
       </Card>
 
+      <Card title="Envie quotidienne moyenne — semaine par semaine (carnet)">
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={envieSemaine}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+            <XAxis dataKey="semaine" />
+            <YAxis domain={[0, 10]} />
+            <Tooltip />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="experimental"
+              name="Expérimental"
+              stroke={INDIGO}
+              strokeWidth={2}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="controle"
+              name="Contrôle"
+              stroke={SLATE}
+              strokeWidth={2}
+              connectNulls
+            />
+          </LineChart>
+        </ResponsiveContainer>
+        <p className="mt-3 text-xs text-slate-400">
+          Envie moyenne déclarée chaque jour (hors séance) — montre l&apos;évolution du craving sur
+          la durée de l&apos;étude.
+        </p>
+      </Card>
+
+      <Card title="Envie d'arrêter et capacité perçue — T0 / T1 / T2">
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={motivation.chart}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+            <XAxis dataKey="temps" />
+            <YAxis domain={[0, 10]} />
+            <Tooltip />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="envieExp"
+              name="Envie d'arrêter — Exp."
+              stroke={INDIGO}
+              strokeWidth={2}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="capaciteExp"
+              name="Capacité perçue — Exp."
+              stroke={EMERALD}
+              strokeWidth={2}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="envieCtrl"
+              name="Envie d'arrêter — Ctrl."
+              stroke={SLATE}
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="capaciteCtrl"
+              name="Capacité perçue — Ctrl."
+              stroke={AMBER}
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              connectNulls
+            />
+          </LineChart>
+        </ResponsiveContainer>
+        <div className="mt-4">
+          <StatLine
+            label="Évolution envie d'arrêter (exp., T0 → T2)"
+            value={fmt(motivation.evolutionEnvieExp)}
+          />
+          <StatLine
+            label="Évolution capacité perçue (exp., T0 → T2)"
+            value={fmt(motivation.evolutionCapaciteExp)}
+          />
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Échelles 0-10. Traits pleins : groupe expérimental ; pointillés : groupe contrôle.
+        </p>
+      </Card>
+
       <Card
         title={`Trajectoires individuelles — consommation par semaine (n=${participantCodes.length})`}
       >
@@ -275,7 +380,8 @@ export default function DashboardCharts({
           </LineChart>
         </ResponsiveContainer>
         <p className="mt-3 text-xs text-slate-400">
-          Montre si la réduction d&apos;envie par séance (delta) s&apos;accentue au fil des semaines.
+          Delta = envie après − avant : positif si la séance fait monter l&apos;envie, négatif si
+          elle la fait baisser. Montre comment cet effet évolue au fil des semaines.
         </p>
       </Card>
 

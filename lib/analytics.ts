@@ -163,6 +163,71 @@ export function consommationParSemaine(carnets: CarnetJour[], participants: Part
   });
 }
 
+/**
+ * Envie quotidienne moyenne (carnet, hors séance) par semaine, expérimental vs
+ * contrôle : montre l'évolution du craving sur la durée de l'étude.
+ */
+export function envieQuotidienneParSemaine(carnets: CarnetJour[], participants: Participant[]) {
+  const withWeek = semaineDeCarnet(carnets);
+
+  return Array.from({ length: 6 }, (_, i) => i + 1).map((semaine) => {
+    const rows = withWeek.filter((c) => c.semaine === semaine && c.cravingMoyenJour !== null);
+    const valuesFor = (groupe: "EXPERIMENTAL" | "CONTROLE") =>
+      rows
+        .filter((c) => groupeOf(participants, c.participantCode) === groupe)
+        .map((c) => c.cravingMoyenJour as number);
+    return {
+      semaine: `S${semaine}`,
+      experimental: round(mean(valuesFor("EXPERIMENTAL"))),
+      controle: round(mean(valuesFor("CONTROLE"))),
+    };
+  });
+}
+
+/**
+ * Envie d'arrêter et capacité perçue à réduire, aux trois temps de mesure,
+ * séparément pour chaque groupe. Échelles 0-10.
+ */
+export function motivationParTemps(suivis: MesureSuivi[], participants: Participant[]) {
+  const temps = ["T0", "T1", "T2"] as const;
+
+  const chart = temps.map((t) => {
+    const rows = suivis.filter((s) => s.temps === t);
+    const moyenneDe = (
+      groupe: "EXPERIMENTAL" | "CONTROLE",
+      champ: "envieArreter" | "capaciteReduireConso"
+    ) =>
+      round(
+        mean(
+          rows
+            .filter((s) => groupeOf(participants, s.participantCode) === groupe)
+            .map((s) => s[champ])
+            .filter((v): v is number => v !== null)
+        )
+      );
+
+    return {
+      temps: t,
+      envieExp: moyenneDe("EXPERIMENTAL", "envieArreter"),
+      envieCtrl: moyenneDe("CONTROLE", "envieArreter"),
+      capaciteExp: moyenneDe("EXPERIMENTAL", "capaciteReduireConso"),
+      capaciteCtrl: moyenneDe("CONTROLE", "capaciteReduireConso"),
+    };
+  });
+
+  // Évolution T0 -> T2 du groupe expérimental (indicateur de synthèse).
+  const first = chart[0];
+  const last = chart[chart.length - 1];
+  const evolution = (a: number | null, b: number | null) =>
+    a === null || b === null ? null : round(b - a);
+
+  return {
+    chart,
+    evolutionEnvieExp: evolution(first.envieExp, last.envieExp),
+    evolutionCapaciteExp: evolution(first.capaciteExp, last.capaciteExp),
+  };
+}
+
 export function trajectoiresIndividuelles(carnets: CarnetJour[], participants: Participant[]) {
   const withWeek = semaineDeCarnet(carnets);
 

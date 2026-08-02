@@ -299,8 +299,9 @@ for (const participant of PARTICIPANTS) {
           ? null
           : Math.round(clamp(cravAvantBase + rand(-1, 1), 0, 10));
 
-        // Après la séance : la MUSCULATION fait davantage monter l'envie que le CARDIO.
-        const delta = modalite === "MUSCULATION" ? rand(0.3, 2.5) : rand(-2, 0.5);
+        // Après la séance : la MUSCULATION fait monter l'envie, tandis que le
+        // CARDIO la laisse globalement inchangée (delta centré sur 0).
+        const delta = modalite === "MUSCULATION" ? rand(0.3, 2.5) : rand(-0.9, 0.9);
         const cravingApres =
           cravingAvant === null || chance(0.04)
             ? null
