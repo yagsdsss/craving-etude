@@ -253,12 +253,17 @@ const SEANCES_ATTENDUES_TOTAL = 12; // 2 séances/semaine × 6 semaines
  * programme à suivre, le taux est donc `null` pour le groupe contrôle.
  */
 export function tauxPresenceParParticipant(seances: MesureSeance[], participants: Participant[]) {
-  return participants.map((p) => {
-    if (p.groupe !== "EXPERIMENTAL") return { code: p.code, tauxPresence: null };
-    const nbSeances = seances.filter((s) => s.participantCode === p.code).length;
-    const tauxPresence = round((nbSeances / SEANCES_ATTENDUES_TOTAL) * 100);
-    return { code: p.code, tauxPresence };
-  });
+  // Seul le groupe expérimental suit un programme : les participants du groupe
+  // contrôle sont exclus (sinon le graphique affiche des barres vides).
+  return participants
+    .filter((p) => p.groupe === "EXPERIMENTAL")
+    .map((p) => {
+      const nbSeances = seances.filter((s) => s.participantCode === p.code).length;
+      return {
+        code: p.code,
+        tauxPresence: round((nbSeances / SEANCES_ATTENDUES_TOTAL) * 100),
+      };
+    });
 }
 
 /**

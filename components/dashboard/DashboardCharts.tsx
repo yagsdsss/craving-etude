@@ -367,6 +367,10 @@ export default function DashboardCharts({
             <Bar dataKey="tauxPresence" fill={INDIGO} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+        <p className="mt-3 text-xs text-slate-400">
+          Séances réalisées sur les 12 prévues (2/semaine × 6 semaines). Groupe expérimental
+          uniquement — le groupe contrôle ne suit pas de programme.
+        </p>
       </Card>
 
       <Card title="Effet séance par semaine (envie avant / après et delta)">

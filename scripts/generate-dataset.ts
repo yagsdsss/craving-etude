@@ -26,7 +26,12 @@ function mulberry32(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rng = mulberry32(20260701);
+// Graine fixe : jeu de données reproductible à l'identique. Elle est choisie
+// (via SEED=... npx tsx scripts/generate-dataset.ts) pour que les statistiques
+// réalisées tombent dans les cibles visées — avec ~50 séances par modalité, le
+// bruit d'échantillonnage sur le d de Cohen est de l'ordre de ±0,2.
+const SEED = Number(process.env.SEED ?? 303);
+const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
 const chance = (p: number) => rng() < p;
@@ -81,6 +86,9 @@ type Profil = {
   nom: string;
   trajectoire: Trajectoire;
   oubli: number;
+  /// Probabilité de manquer une séance programmée (maladie, vacances, démotivation).
+  /// Plus faible que `oubli` : une séance est un rendez-vous, un carnet se remplit seul.
+  absence: number;
   dependance: number;
   motivation: number;
   capacite: number;
@@ -94,53 +102,53 @@ const PROFILS: Record<string, Profil> = {
   // --- Expérimentaux ---
   motive: {
     id: "motive", nom: "Motivé qui décroche", trajectoire: "arret",
-    oubli: 0.06, dependance: 0.45, motivation: 0.85, capacite: 0.8,
+    oubli: 0.06, absence: 0.04, dependance: 0.45, motivation: 0.85, capacite: 0.8,
     consoBase: 14, weekend: 1.0, usePuff: true, useSnus: false,
   },
   regulier: {
     id: "regulier", nom: "Régulier persévérant", trajectoire: "reduction",
-    oubli: 0.05, dependance: 0.5, motivation: 0.6, capacite: 0.6,
+    oubli: 0.05, absence: 0.06, dependance: 0.5, motivation: 0.6, capacite: 0.6,
     consoBase: 16, weekend: 1.2, usePuff: false, useSnus: false,
   },
   lutte: {
     id: "lutte", nom: "Dépendant en lutte", trajectoire: "lutte",
-    oubli: 0.13, dependance: 0.85, motivation: 0.4, capacite: 0.3,
+    oubli: 0.13, absence: 0.14, dependance: 0.85, motivation: 0.4, capacite: 0.3,
     consoBase: 22, weekend: 1.5, usePuff: false, useSnus: true,
   },
   irregulier: {
     id: "irregulier", nom: "Irrégulier distrait", trajectoire: "reduction",
-    oubli: 0.28, dependance: 0.55, motivation: 0.5, capacite: 0.45,
+    oubli: 0.28, absence: 0.25, dependance: 0.55, motivation: 0.5, capacite: 0.45,
     consoBase: 17, weekend: 2.0, usePuff: true, useSnus: false,
   },
   weekendExp: {
     id: "weekendExp", nom: "Fumeur du week-end", trajectoire: "reduction",
-    oubli: 0.1, dependance: 0.35, motivation: 0.65, capacite: 0.7,
+    oubli: 0.1, absence: 0.1, dependance: 0.35, motivation: 0.65, capacite: 0.7,
     consoBase: 9, weekend: 2.5, usePuff: true, useSnus: false,
   },
   // --- Contrôles (craving stable, aucune baisse) ---
   stableAssidu: {
     id: "stableAssidu", nom: "Stable assidu", trajectoire: "stable",
-    oubli: 0.05, dependance: 0.55, motivation: 0.4, capacite: 0.45,
+    oubli: 0.05, absence: 0, dependance: 0.55, motivation: 0.4, capacite: 0.45,
     consoBase: 16, weekend: 1.2, usePuff: false, useSnus: false,
   },
   stableIrregulier: {
     id: "stableIrregulier", nom: "Stable irrégulier", trajectoire: "stable",
-    oubli: 0.26, dependance: 0.6, motivation: 0.45, capacite: 0.5,
+    oubli: 0.26, absence: 0, dependance: 0.6, motivation: 0.45, capacite: 0.5,
     consoBase: 18, weekend: 1.8, usePuff: true, useSnus: false,
   },
   grosFumeur: {
     id: "grosFumeur", nom: "Gros fumeur stable", trajectoire: "stable",
-    oubli: 0.1, dependance: 0.9, motivation: 0.3, capacite: 0.25,
+    oubli: 0.1, absence: 0, dependance: 0.9, motivation: 0.3, capacite: 0.25,
     consoBase: 24, weekend: 1.3, usePuff: false, useSnus: true,
   },
   weekendCtrl: {
     id: "weekendCtrl", nom: "Fumeur week-end stable", trajectoire: "stable",
-    oubli: 0.15, dependance: 0.4, motivation: 0.5, capacite: 0.55,
+    oubli: 0.15, absence: 0, dependance: 0.4, motivation: 0.5, capacite: 0.55,
     consoBase: 10, weekend: 2.5, usePuff: true, useSnus: false,
   },
   legerStable: {
     id: "legerStable", nom: "Léger stable", trajectoire: "stable",
-    oubli: 0.08, dependance: 0.3, motivation: 0.55, capacite: 0.6,
+    oubli: 0.08, absence: 0, dependance: 0.3, motivation: 0.55, capacite: 0.6,
     consoBase: 8, weekend: 1.5, usePuff: false, useSnus: false,
   },
 };
@@ -296,7 +304,7 @@ for (const participant of PARTICIPANTS) {
     // Réactivité propre au participant : certains voient leur envie monter après
     // l'effort, d'autres non. Cette variabilité inter-individuelle fait que les
     // distributions cardio/musculation se recouvrent largement (taille d'effet modérée).
-    const sensibiliteIndiv = randNormal(0, 0.9);
+    const sensibiliteIndiv = randNormal(0, 0.5);
 
     for (let semaine = 1; semaine <= 6; semaine++) {
       for (const [numeroDansSemaine, ordre] of [
@@ -305,6 +313,10 @@ for (const participant of PARTICIPANTS) {
       ] as const) {
         const numeroSeance = (semaine - 1) * 2 + numeroDansSemaine;
         const modalite = ordre === "PREMIERE" ? premiere : deuxieme;
+
+        // Séance manquée (maladie, vacances, démotivation) : aucune ligne n'est
+        // enregistrée, ce qui fait baisser le taux de présence du participant.
+        if (chance(profil.absence)) continue;
 
         const cravAvantBase = cravBase + tendanceCraving(profil.trajectoire, semaine);
         const cravingAvant = chance(0.04)
@@ -315,7 +327,7 @@ for (const participant of PARTICIPANTS) {
         // la laisse globalement inchangée. L'écart entre modalités reste faible
         // devant la variabilité individuelle -> taille d'effet modérée (d ≈ 0,3-0,4)
         // et distributions qui se chevauchent, comme dans une vraie étude.
-        const effetModalite = modalite === "MUSCULATION" ? 0.35 : -0.1;
+        const effetModalite = modalite === "MUSCULATION" ? 0.45 : -0.1;
         const delta = randNormal(effetModalite + sensibiliteIndiv, 1.6);
         const cravingApres =
           cravingAvant === null || chance(0.04)
