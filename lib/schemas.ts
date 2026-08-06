@@ -92,7 +92,8 @@ export const participantUpdateSchema = z.object({
   groupe: z.enum(["EXPERIMENTAL", "CONTROLE"]).optional(),
   age: z.number().int().min(18).max(30).optional(),
   sexe: z.enum(["HOMME", "FEMME", "AUTRE"]).optional(),
-  sousGroupe: z.enum(["A", "B"]).optional(),
+  // null est admis : c'est la valeur du groupe contrôle, qui n'a pas de sous-groupe.
+  sousGroupe: z.enum(["A", "B"]).nullable().optional(),
 });
 
 export const mesureSeanceUpdateSchema = z.object({
