@@ -6,13 +6,6 @@ import type {
 } from "@/app/generated/prisma/client";
 import { cohensDIndependent, cohensDPaired, mean, round, stdDev } from "@/lib/stats";
 
-type Data = {
-  participants: Participant[];
-  seances: MesureSeance[];
-  carnets: CarnetJour[];
-  suivis: MesureSuivi[];
-};
-
 // --- Conversion de la consommation en équivalent cigarette ------------------
 // Équivalence fondée sur la nicotine (plus défendable qu'un décompte de bouffées).
 // Puff Adalya 20K : 25 mL d'e-liquide à 20 mg/mL → 500 mg de nicotine pour 100 %
@@ -334,40 +327,4 @@ export function recapHebdoParParticipant(
   }
 
   return rows;
-}
-
-export function donneesManquantes(data: Data) {
-  const countNulls = (rows: Record<string, unknown>[], fields: string[]) =>
-    fields.map((field) => ({
-      champ: field,
-      manquants: rows.filter((r) => r[field] === null || r[field] === undefined).length,
-      total: rows.length,
-    }));
-
-  return {
-    mesureSeance: countNulls(data.seances as unknown as Record<string, unknown>[], [
-      "cravingAvant",
-      "cravingApres",
-      "rpeReel",
-      "heuresDepuisDerniereConso",
-      "qsuScoreTotal",
-    ]),
-    carnetJour: countNulls(data.carnets as unknown as Record<string, unknown>[], [
-      "cigarettes",
-      "puffPourcentage",
-      "snusSachets",
-      "cravingMoyenJour",
-    ]),
-    mesureSuivi: countNulls(data.suivis as unknown as Record<string, unknown>[], [
-      "scoreFagerstrom",
-      "consoPuffSemaine",
-      "consoSnusSemaine",
-      "consoCigaretteSemaine",
-      "poids",
-      "taille",
-      "imc",
-      "envieArreter",
-      "capaciteReduireConso",
-    ]),
-  };
 }

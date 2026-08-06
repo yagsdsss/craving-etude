@@ -327,7 +327,7 @@ for (const participant of PARTICIPANTS) {
         // la laisse globalement inchangée. L'écart entre modalités reste faible
         // devant la variabilité individuelle -> taille d'effet modérée (d ≈ 0,3-0,4)
         // et distributions qui se chevauchent, comme dans une vraie étude.
-        const effetModalite = modalite === "MUSCULATION" ? 0.45 : -0.1;
+        const effetModalite = modalite === "MUSCULATION" ? 0.9 : 0.45;
         const delta = randNormal(effetModalite + sensibiliteIndiv, 1.6);
         const cravingApres =
           cravingAvant === null || chance(0.04)

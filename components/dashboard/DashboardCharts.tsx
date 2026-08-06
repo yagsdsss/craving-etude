@@ -88,11 +88,6 @@ type Props = {
     deltaSeance: number | null;
     consoMoyenne: number | null;
   }[];
-  manquantes: {
-    mesureSeance: { champ: string; manquants: number; total: number }[];
-    carnetJour: { champ: string; manquants: number; total: number }[];
-    mesureSuivi: { champ: string; manquants: number; total: number }[];
-  };
 };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -128,7 +123,6 @@ export default function DashboardCharts({
   presence,
   effetSemaine,
   recapHebdo,
-  manquantes,
 }: Props) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -432,36 +426,6 @@ export default function DashboardCharts({
           Conso en équivalent cigarette : cigarettes + puff (% → éq. cig.) + snus (1 sachet = 1).
         </p>
       </Card>
-
-      <Card title="Données manquantes">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MissingTable title="Séances" rows={manquantes.mesureSeance} />
-          <MissingTable title="Carnet" rows={manquantes.carnetJour} />
-          <MissingTable title="Suivi T0/T1/T2" rows={manquantes.mesureSuivi} />
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function MissingTable({
-  title,
-  rows,
-}: {
-  title: string;
-  rows: { champ: string; manquants: number; total: number }[];
-}) {
-  return (
-    <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
-      {rows.map((r) => (
-        <div key={r.champ} className="flex items-baseline justify-between gap-3 text-sm">
-          <span className="truncate text-slate-500">{r.champ}</span>
-          <span className="shrink-0 font-medium text-slate-900">
-            {r.manquants} / {r.total}
-          </span>
-        </div>
-      ))}
     </div>
   );
 }

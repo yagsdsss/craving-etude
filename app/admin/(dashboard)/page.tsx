@@ -4,7 +4,6 @@ import {
   consommationParSemaine,
   qsuParSemaine,
   deltaParModalite,
-  donneesManquantes,
   effetSeanceParSemaine,
   envieQuotidienneParSemaine,
   motivationParTemps,
@@ -45,7 +44,6 @@ export default async function AdminDashboardPage() {
     presence: tauxPresenceParParticipant(seances, participants),
     effetSemaine: effetSeanceParSemaine(seances),
     recapHebdo: recapHebdoParParticipant(seances, carnets, participants),
-    manquantes: donneesManquantes({ participants, seances, carnets, suivis }),
   };
 
   return (
