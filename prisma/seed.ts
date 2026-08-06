@@ -14,16 +14,28 @@ async function main() {
   // Tout provient du jeu de données figé (profils), généré hors-ligne par
   // scripts/generate-dataset.ts — même source que la route admin, zéro divergence.
   console.log("Création des participants...");
-  await prisma.participant.createMany({ data: PARTICIPANTS as never });
+  await prisma.participant.createMany({
+    data: PARTICIPANTS.map((r) => ({ ...r, createdAt: new Date(r.createdAt) })) as never,
+  });
 
   console.log("Insertion des données des profils (carnet / séances / suivi)...");
   await prisma.carnetJour.createMany({
-    data: CARNETS.map((r) => ({ ...r, date: new Date(r.date) })) as never,
+    data: CARNETS.map((r) => ({
+      ...r,
+      date: new Date(r.date),
+      createdAt: new Date(r.createdAt),
+    })) as never,
   });
   await prisma.mesureSeance.createMany({
-    data: SEANCES.map((r) => ({ ...r, heureDebut: new Date(r.heureDebut as string) })) as never,
+    data: SEANCES.map((r) => ({
+      ...r,
+      heureDebut: new Date(r.heureDebut as string),
+      createdAt: new Date(r.createdAt as string),
+    })) as never,
   });
-  await prisma.mesureSuivi.createMany({ data: SUIVIS as never });
+  await prisma.mesureSuivi.createMany({
+    data: SUIVIS.map((r) => ({ ...r, createdAt: new Date(r.createdAt as string) })) as never,
+  });
 
   const [nParticipants, nSeances, nCarnets, nSuivis] = await Promise.all([
     prisma.participant.count(),

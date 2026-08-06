@@ -38,9 +38,17 @@ export async function POST(request: NextRequest) {
 
   try {
     // Conversion des dates (stockées en ISO string dans le fichier figé).
-    const carnets = CARNETS.map((r) => ({ ...r, date: new Date(r.date) }));
-    const seances = SEANCES.map((r) => ({ ...r, heureDebut: new Date(r.heureDebut as string) }));
-    const suivis = SUIVIS.map((r) => ({ ...r }));
+    const carnets = CARNETS.map((r) => ({
+      ...r,
+      date: new Date(r.date),
+      createdAt: new Date(r.createdAt),
+    }));
+    const seances = SEANCES.map((r) => ({
+      ...r,
+      heureDebut: new Date(r.heureDebut as string),
+      createdAt: new Date(r.createdAt as string),
+    }));
+    const suivis = SUIVIS.map((r) => ({ ...r, createdAt: new Date(r.createdAt as string) }));
 
     // On efface d'abord (les 3 tables référencent le participant, jamais l'inverse).
     await prisma.mesureSeance.deleteMany();
@@ -49,10 +57,17 @@ export async function POST(request: NextRequest) {
 
     // On s'assure que les 20 participants existent (sinon la clé étrangère saute).
     for (const p of PARTICIPANTS) {
+      const data = { ...p, createdAt: new Date(p.createdAt) };
       await prisma.participant.upsert({
         where: { code: p.code },
-        create: p as never,
-        update: { groupe: p.groupe, sousGroupe: p.sousGroupe, age: p.age, sexe: p.sexe } as never,
+        create: data as never,
+        update: {
+          groupe: p.groupe,
+          sousGroupe: p.sousGroupe,
+          age: p.age,
+          sexe: p.sexe,
+          createdAt: data.createdAt,
+        } as never,
       });
     }
 

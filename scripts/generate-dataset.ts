@@ -55,16 +55,24 @@ type Participant = {
   sousGroupe: "A" | "B";
   age: number;
   sexe: "HOMME" | "FEMME" | "AUTRE";
+  createdAt: string;
 };
 // RNG dédié à l'âge/sexe pour ne PAS décaler le flux principal (données inchangées).
 const rngDemo = mulberry32(4242);
-const PARTICIPANTS: Participant[] = Array.from({ length: 20 }, (_, i) => ({
-  code: `P${String(i + 1).padStart(2, "0")}`,
-  groupe: i % 2 === 0 ? "EXPERIMENTAL" : "CONTROLE",
-  sousGroupe: i % 2 === 0 ? "A" : "B",
-  age: Math.floor(rngDemo() * 13) + 18, // 18..30
-  sexe: rngDemo() < 0.5 ? "HOMME" : rngDemo() < 0.9 ? "FEMME" : "AUTRE",
-}));
+const PARTICIPANTS: Participant[] = Array.from({ length: 20 }, (_, i) => {
+  // Inclusion échelonnée sur les deux semaines précédant le début de l'étude.
+  const inscription = new Date("2026-07-01T00:00:00.000Z");
+  inscription.setUTCDate(inscription.getUTCDate() - 14 + Math.floor(rngDemo() * 14));
+  inscription.setUTCHours(9 + Math.floor(rngDemo() * 9), Math.floor(rngDemo() * 60));
+  return {
+    code: `P${String(i + 1).padStart(2, "0")}`,
+    groupe: i % 2 === 0 ? ("EXPERIMENTAL" as const) : ("CONTROLE" as const),
+    sousGroupe: i % 2 === 0 ? ("A" as const) : ("B" as const),
+    age: Math.floor(rngDemo() * 13) + 18, // 18..30
+    sexe: rngDemo() < 0.5 ? ("HOMME" as const) : rngDemo() < 0.9 ? ("FEMME" as const) : ("AUTRE" as const),
+    createdAt: inscription.toISOString(),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // PROFILS de personnalité
@@ -205,6 +213,48 @@ function fagerAnswers(dep: number, consoJour: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Horodatage de saisie (createdAt)
+// ---------------------------------------------------------------------------
+// Sans valeur explicite, Prisma met `now()` : toutes les lignes insérées en lot
+// portent alors le MÊME horodatage, ce qui trahit une génération automatique.
+// On reconstitue donc un moment de saisie plausible pour chaque enregistrement.
+
+/** Carnet : rempli le soir même, parfois le lendemain matin, parfois en retard. */
+function saisieCarnet(dateJour: Date): Date {
+  const t = new Date(dateJour);
+  const r = rng();
+  if (r < 0.72) {
+    // le soir même, entre 20h et 23h59
+    t.setUTCHours(20 + Math.floor(rng() * 4), Math.floor(rng() * 60), Math.floor(rng() * 60));
+  } else if (r < 0.93) {
+    // le lendemain matin (oubli du soir), entre 7h et 10h
+    t.setUTCDate(t.getUTCDate() + 1);
+    t.setUTCHours(7 + Math.floor(rng() * 3), Math.floor(rng() * 60), Math.floor(rng() * 60));
+  } else {
+    // rattrapage 2 à 3 jours plus tard
+    t.setUTCDate(t.getUTCDate() + 2 + Math.floor(rng() * 2));
+    t.setUTCHours(18 + Math.floor(rng() * 5), Math.floor(rng() * 60), Math.floor(rng() * 60));
+  }
+  return t;
+}
+
+/** Séance : saisie juste après l'effort, 40 min à 2 h après le début. */
+function saisieSeance(heureDebut: Date): Date {
+  const t = new Date(heureDebut);
+  t.setUTCMinutes(t.getUTCMinutes() + 40 + Math.floor(rng() * 80), Math.floor(rng() * 60));
+  return t;
+}
+
+/** Mesure de suivi : le jour du rendez-vous (T0 début, T1 mi-parcours, T2 fin). */
+function saisieSuivi(index: number): Date {
+  const joursDeReference = [0, 21, 41]; // T0, T1, T2 sur les 6 semaines
+  const t = new Date(STUDY_START);
+  t.setUTCDate(t.getUTCDate() + joursDeReference[index] + Math.floor(rng() * 3));
+  t.setUTCHours(9 + Math.floor(rng() * 9), Math.floor(rng() * 60), Math.floor(rng() * 60));
+  return t;
+}
+
+// ---------------------------------------------------------------------------
 // Types de sortie (miroir des modèles Prisma)
 // ---------------------------------------------------------------------------
 type CarnetRow = {
@@ -215,6 +265,7 @@ type CarnetRow = {
   snusSachets: number | null;
   cravingMoyenJour: number | null;
   evenementParticulier: string | null;
+  createdAt: string;
 };
 type SeanceRow = {
   participantCode: string;
@@ -292,6 +343,7 @@ for (const participant of PARTICIPANTS) {
                 : ["Journée stressante au travail.", "Journée calme.", "Grosse envie ce matin.", "Réunion tendue."]
             )
           : null,
+        createdAt: saisieCarnet(date).toISOString(),
       });
     }
   }
@@ -368,6 +420,7 @@ for (const participant of PARTICIPANTS) {
           remarque: chance(0.12)
             ? pick(["Séance difficile.", "Bonne énergie.", "Envie remontée après.", "Motivation ok."])
             : null,
+          createdAt: saisieSeance(heureDebut).toISOString(),
           ...qsuAnswers,
           ...qsuScores,
         });
@@ -408,6 +461,7 @@ for (const participant of PARTICIPANTS) {
         : Math.round(clamp(profil.capacite * 10 + bonusMotiv + rand(-1, 1), 0, 10)),
       ...fagers,
       scoreFagerstrom: computeFagerstromScore(fagers),
+      createdAt: saisieSuivi(index).toISOString(),
     });
   });
 }
@@ -426,10 +480,19 @@ export type CarnetRow = ${"{"}
   snusSachets: number | null;
   cravingMoyenJour: number | null;
   evenementParticulier: string | null;
+  createdAt: string;
 ${"}"};
 
-export type SeanceRow = Record<string, unknown> & { participantCode: string; heureDebut: string };
-export type SuiviRow = Record<string, unknown> & { participantCode: string; temps: string };
+export type SeanceRow = Record<string, unknown> & {
+  participantCode: string;
+  heureDebut: string;
+  createdAt: string;
+};
+export type SuiviRow = Record<string, unknown> & {
+  participantCode: string;
+  temps: string;
+  createdAt: string;
+};
 
 export type ParticipantRow = {
   code: string;
@@ -437,6 +500,7 @@ export type ParticipantRow = {
   sousGroupe: "A" | "B";
   age: number;
   sexe: "HOMME" | "FEMME" | "AUTRE";
+  createdAt: string;
 };
 
 export const PROFILS_ASSIGNES: Record<string, string> = ${JSON.stringify(ASSIGNATION, null, 2)};
