@@ -181,9 +181,6 @@ export default function DonneesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Données</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Consulte et corrige toutes les données saisies, y compris les dates.
-        </p>
       </div>
 
       <div className="flex gap-1 border-b border-slate-200">

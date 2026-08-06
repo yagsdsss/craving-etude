@@ -16,9 +16,13 @@ const TABLES = {
 
 type TableName = keyof typeof TABLES;
 
+// Champs exclus de l'export : date d'enregistrement technique, sans intérêt
+// pour l'analyse des données de l'étude.
+const CHAMPS_EXCLUS = new Set(["createdAt"]);
+
 function toCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return "";
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0]).filter((h) => !CHAMPS_EXCLUS.has(h));
   const escape = (value: unknown) => {
     if (value === null || value === undefined) return "";
     const str = value instanceof Date ? value.toISOString() : String(value);
