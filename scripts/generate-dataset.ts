@@ -30,7 +30,7 @@ function mulberry32(seed: number) {
 // (via SEED=... npx tsx scripts/generate-dataset.ts) pour que les statistiques
 // réalisées tombent dans les cibles visées — avec ~50 séances par modalité, le
 // bruit d'échantillonnage sur le d de Cohen est de l'ordre de ±0,2.
-const SEED = Number(process.env.SEED ?? 303);
+const SEED = Number(process.env.SEED ?? 7024);
 const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -52,7 +52,9 @@ const randNormal = (mu: number, sigma: number) => {
 type Participant = {
   code: string;
   groupe: "EXPERIMENTAL" | "CONTROLE";
-  sousGroupe: "A" | "B";
+  /// Uniquement pour le groupe expérimental : A = cardio puis musculation,
+  /// B = musculation puis cardio. Null pour le contrôle (pas de programme).
+  sousGroupe: "A" | "B" | null;
   age: number;
   sexe: "HOMME" | "FEMME" | "AUTRE";
   createdAt: string;
@@ -64,10 +66,15 @@ const PARTICIPANTS: Participant[] = Array.from({ length: 20 }, (_, i) => {
   const inscription = new Date("2026-07-01T00:00:00.000Z");
   inscription.setUTCDate(inscription.getUTCDate() - 14 + Math.floor(rngDemo() * 14));
   inscription.setUTCHours(9 + Math.floor(rngDemo() * 9), Math.floor(rngDemo() * 60));
+  const experimental = i % 2 === 0;
+  // Contre-balancement : les expérimentaux sont répartis en deux moitiés
+  // (A = cardio puis musculation, B = l'inverse) pour que l'ordre de passage
+  // ne soit pas confondu avec la modalité. Le contrôle n'a pas de sous-groupe.
+  const rangExperimental = i / 2; // 0..9 pour les expérimentaux
   return {
     code: `P${String(i + 1).padStart(2, "0")}`,
-    groupe: i % 2 === 0 ? ("EXPERIMENTAL" as const) : ("CONTROLE" as const),
-    sousGroupe: i % 2 === 0 ? ("A" as const) : ("B" as const),
+    groupe: experimental ? ("EXPERIMENTAL" as const) : ("CONTROLE" as const),
+    sousGroupe: experimental ? (rangExperimental % 2 === 0 ? ("A" as const) : ("B" as const)) : null,
     age: Math.floor(rngDemo() * 13) + 18, // 18..30
     sexe: rngDemo() < 0.5 ? ("HOMME" as const) : rngDemo() < 0.9 ? ("FEMME" as const) : ("AUTRE" as const),
     createdAt: inscription.toISOString(),
@@ -497,7 +504,8 @@ export type SuiviRow = Record<string, unknown> & {
 export type ParticipantRow = {
   code: string;
   groupe: "EXPERIMENTAL" | "CONTROLE";
-  sousGroupe: "A" | "B";
+  /** Groupe expérimental uniquement (A = cardio puis muscu, B = l'inverse). */
+  sousGroupe: "A" | "B" | null;
   age: number;
   sexe: "HOMME" | "FEMME" | "AUTRE";
   createdAt: string;

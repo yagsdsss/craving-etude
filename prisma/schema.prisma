@@ -44,12 +44,17 @@ enum Temps {
 }
 
 model Participant {
-  code       String     @id
-  groupe     Groupe
-  age        Int
-  sexe       Sexe
-  sousGroupe SousGroupe
-  createdAt  DateTime   @default(now())
+  code   String @id
+  groupe Groupe
+  age    Int
+  sexe   Sexe
+
+  /// Ordre de passage des modalités — groupe EXPÉRIMENTAL uniquement :
+  /// A = cardio puis musculation, B = musculation puis cardio (contre-balancement).
+  /// Toujours null pour le groupe contrôle, qui ne suit aucun programme.
+  sousGroupe SousGroupe?
+
+  createdAt DateTime @default(now())
 
   mesuresSeance MesureSeance[]
   carnetsJour   CarnetJour[]

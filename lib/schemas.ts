@@ -2,13 +2,24 @@ import { z } from "zod";
 
 const scale0to10 = z.number().int().min(0).max(10);
 
-export const participantSchema = z.object({
-  code: z.string().regex(/^P(0[1-9]|1[0-9]|20)$/, "Code attendu : P01 à P20"),
-  groupe: z.enum(["EXPERIMENTAL", "CONTROLE"]),
-  age: z.number().int().min(18).max(30),
-  sexe: z.enum(["HOMME", "FEMME", "AUTRE"]),
-  sousGroupe: z.enum(["A", "B"]),
-});
+export const participantSchema = z
+  .object({
+    code: z.string().regex(/^P(0[1-9]|1[0-9]|20)$/, "Code attendu : P01 à P20"),
+    groupe: z.enum(["EXPERIMENTAL", "CONTROLE"]),
+    age: z.number().int().min(18).max(30),
+    sexe: z.enum(["HOMME", "FEMME", "AUTRE"]),
+    // Ordre de passage des modalités : groupe expérimental uniquement.
+    sousGroupe: z.enum(["A", "B"]).nullable().optional(),
+  })
+  .refine((p) => p.groupe !== "EXPERIMENTAL" || p.sousGroupe != null, {
+    message: "Le sous-groupe est requis pour le groupe expérimental",
+    path: ["sousGroupe"],
+  })
+  .transform((p) => ({
+    ...p,
+    // Le contrôle ne suit aucun programme : pas de sous-groupe.
+    sousGroupe: p.groupe === "EXPERIMENTAL" ? p.sousGroupe! : null,
+  }));
 
 const qsuItem = z.number().int().min(1).max(7);
 const fagerItem = z.number().int().min(0).max(3);

@@ -7,7 +7,8 @@ type Participant = {
   groupe: "EXPERIMENTAL" | "CONTROLE";
   age: number;
   sexe: "HOMME" | "FEMME" | "AUTRE";
-  sousGroupe: "A" | "B";
+  /** Groupe expérimental uniquement — null pour le contrôle. */
+  sousGroupe: "A" | "B" | null;
 };
 
 type ParticipantForm = {
@@ -15,7 +16,7 @@ type ParticipantForm = {
   groupe: Participant["groupe"];
   age: string;
   sexe: Participant["sexe"];
-  sousGroupe: Participant["sousGroupe"];
+  sousGroupe: "A" | "B";
 };
 
 const emptyForm: ParticipantForm = {
@@ -48,7 +49,12 @@ export default function ParticipantsAdminPage() {
     const res = await fetch("/api/participants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, age: Number(form.age) }),
+      body: JSON.stringify({
+        ...form,
+        age: Number(form.age),
+        // Le sous-groupe ne concerne que le groupe expérimental.
+        sousGroupe: form.groupe === "EXPERIMENTAL" ? form.sousGroupe : null,
+      }),
     });
 
     setSaving(false);
@@ -95,19 +101,21 @@ export default function ParticipantsAdminPage() {
                 <option value="CONTROLE">Contrôle</option>
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-sm text-slate-600">Sous-groupe</label>
-              <select
-                value={form.sousGroupe}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, sousGroupe: e.target.value as Participant["sousGroupe"] }))
-                }
-                className="h-11 w-full rounded-lg border border-slate-300 px-3"
-              >
-                <option value="A">A</option>
-                <option value="B">B</option>
-              </select>
-            </div>
+            {form.groupe === "EXPERIMENTAL" ? (
+              <div>
+                <label className="mb-1 block text-sm text-slate-600">Ordre des modalités</label>
+                <select
+                  value={form.sousGroupe}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, sousGroupe: e.target.value as "A" | "B" }))
+                  }
+                  className="h-11 w-full rounded-lg border border-slate-300 px-3"
+                >
+                  <option value="A">A — cardio puis musculation</option>
+                  <option value="B">B — musculation puis cardio</option>
+                </select>
+              </div>
+            ) : null}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -162,8 +170,9 @@ export default function ParticipantsAdminPage() {
             >
               <span className="font-medium text-slate-900">{p.code}</span>
               <span className="text-slate-500">
-                {p.groupe === "EXPERIMENTAL" ? "Expérimental" : "Contrôle"} · {p.sousGroupe} ·{" "}
-                {p.age} ans · {p.sexe.toLowerCase()}
+                {p.groupe === "EXPERIMENTAL" ? "Expérimental" : "Contrôle"}
+                {p.sousGroupe ? ` · ${p.sousGroupe}` : ""} · {p.age} ans ·{" "}
+                {p.sexe.toLowerCase()}
               </span>
               <button
                 type="button"

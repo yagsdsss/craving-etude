@@ -59,7 +59,8 @@ function modaliteDe(sousGroupe: "A" | "B", ordre: "PREMIERE" | "DEUXIEME"): "CAR
   return ordre === "PREMIERE" ? premiereModalite : deuxiemeModalite;
 }
 
-type Participant = { code: string; sousGroupe: "A" | "B" };
+/** sousGroupe est null pour le groupe contrôle, qui n'a pas de séances. */
+type Participant = { code: string; sousGroupe: "A" | "B" | null };
 
 export default function SaisieSeancePage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -151,7 +152,8 @@ export default function SaisieSeancePage() {
     update({ step: "confirmation" });
   }
 
-  const canStart = participant && draft.ordre && draft.semaine;
+  // Sans sous-groupe (groupe contrôle), aucune modalité n'est définie : pas de séance.
+  const canStart = participant?.sousGroupe && draft.ordre && draft.semaine;
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6">
@@ -188,8 +190,18 @@ export default function SaisieSeancePage() {
                     return;
                   }
                   setCodeInput(normalized);
-                  if (!participants.some((p) => p.code === normalized)) {
+                  const trouve = participants.find((p) => p.code === normalized);
+                  if (!trouve) {
                     setCodeError("Ce code n'existe pas encore — vérifie auprès du coach.");
+                    update({ participantCode: null });
+                    return;
+                  }
+                  // Sans sous-groupe, le participant est dans le groupe contrôle :
+                  // il ne suit pas de programme et n'a donc pas de séance à saisir.
+                  if (!trouve.sousGroupe) {
+                    setCodeError(
+                      "Ce code appartient au groupe contrôle : pas de séance à saisir."
+                    );
                     update({ participantCode: null });
                     return;
                   }
@@ -222,7 +234,7 @@ export default function SaisieSeancePage() {
               </div>
             </div>
 
-            {participant && draft.ordre && (
+            {participant?.sousGroupe && draft.ordre && (
               <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
                 Modalité (déterminée par ton sous-groupe {participant.sousGroupe}) :{" "}
                 <span className="font-semibold text-slate-900">
@@ -269,7 +281,9 @@ export default function SaisieSeancePage() {
                 update({
                   step: "avant",
                   heureDebut: new Date().toISOString(),
-                  modalite: participant ? modaliteDe(participant.sousGroupe, draft.ordre!) : null,
+                  modalite: participant?.sousGroupe
+                    ? modaliteDe(participant.sousGroupe, draft.ordre!)
+                    : null,
                 })
               }
               className="h-16 w-full rounded-2xl bg-slate-900 text-lg font-semibold text-white disabled:opacity-30"

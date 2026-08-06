@@ -12,9 +12,10 @@ const GROUPE_OPTIONS = [
   { value: "EXPERIMENTAL", label: "Expérimental" },
   { value: "CONTROLE", label: "Contrôle" },
 ];
+// Ordre de passage des modalités — groupe expérimental uniquement.
 const SOUS_GROUPE_OPTIONS = [
-  { value: "A", label: "A" },
-  { value: "B", label: "B" },
+  { value: "A", label: "A — cardio puis musculation" },
+  { value: "B", label: "B — musculation puis cardio" },
 ];
 const MODALITE_OPTIONS = [
   { value: "CARDIO", label: "Cardio" },
@@ -33,7 +34,7 @@ const TEMPS_OPTIONS = [
 const participantFields: FieldConfig[] = [
   { key: "code", label: "Code", type: "text", readOnly: true },
   { key: "groupe", label: "Groupe", type: "select", options: GROUPE_OPTIONS },
-  { key: "sousGroupe", label: "Sous-groupe", type: "select", options: SOUS_GROUPE_OPTIONS },
+  { key: "sousGroupe", label: "Ordre des modalités (exp. seulement)", type: "select", options: SOUS_GROUPE_OPTIONS },
   { key: "age", label: "Âge", type: "number", min: 18, max: 30 },
   { key: "sexe", label: "Sexe", type: "select", options: SEXE_OPTIONS },
 ];
