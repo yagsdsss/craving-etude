@@ -4,7 +4,7 @@ import type {
   MesureSuivi,
   Participant,
 } from "@/app/generated/prisma/client";
-import { cohensDIndependent, cohensDPaired, mean, round, stdDev } from "@/lib/stats";
+import { cohensDPaired, mean, round, stdDev } from "@/lib/stats";
 
 // --- Conversion de la consommation en équivalent cigarette ------------------
 // Équivalence fondée sur la nicotine (plus défendable qu'un décompte de bouffées).
@@ -36,10 +36,39 @@ function groupeOf(participants: Participant[], code: string) {
   return participants.find((p) => p.code === code)?.groupe ?? null;
 }
 
+/**
+ * Regroupe des séances par participant et renvoie, pour chacun, la moyenne
+ * d'une mesure. Indispensable avant tout test : un même participant fournit
+ * une dizaine de séances, qui ne sont donc pas des observations indépendantes
+ * (pseudo-réplication). L'unité d'analyse est le participant, pas la séance.
+ */
+function moyenneParParticipant(
+  seances: MesureSeance[],
+  valeur: (s: MesureSeance) => number | null
+): Map<string, number> {
+  const sommes = new Map<string, { total: number; n: number }>();
+  for (const s of seances) {
+    const v = valeur(s);
+    if (v === null) continue;
+    const acc = sommes.get(s.participantCode) ?? { total: 0, n: 0 };
+    acc.total += v;
+    acc.n += 1;
+    sommes.set(s.participantCode, acc);
+  }
+  return new Map([...sommes].map(([code, { total, n }]) => [code, total / n]));
+}
+
 export function avantApresGlobal(seances: MesureSeance[]) {
-  const avant = seances.map((s) => s.cravingAvant).filter((v): v is number => v !== null);
-  const apres = seances.map((s) => s.cravingApres).filter((v): v is number => v !== null);
-  const paired = seances.filter((s) => s.cravingAvant !== null && s.cravingApres !== null);
+  // Seules les séances où les deux mesures existent entrent dans la comparaison.
+  const completes = seances.filter((s) => s.cravingAvant !== null && s.cravingApres !== null);
+
+  // Une valeur par participant, puis test apparié sur ces valeurs.
+  const avantParPart = moyenneParParticipant(completes, (s) => s.cravingAvant);
+  const apresParPart = moyenneParParticipant(completes, (s) => s.cravingApres);
+  const codes = [...avantParPart.keys()].filter((c) => apresParPart.has(c));
+
+  const avant = codes.map((c) => avantParPart.get(c)!);
+  const apres = codes.map((c) => apresParPart.get(c)!);
 
   return {
     chart: [
@@ -50,30 +79,41 @@ export function avantApresGlobal(seances: MesureSeance[]) {
     ecartTypeAvant: round(stdDev(avant)),
     moyenneApres: round(mean(apres)),
     ecartTypeApres: round(stdDev(apres)),
-    n: paired.length,
-    cohensD: round(
-      cohensDPaired(
-        paired.map((s) => s.cravingAvant!),
-        paired.map((s) => s.cravingApres!)
-      )
-    ),
+    /** Nombre de participants — c'est l'effectif qui compte pour le test. */
+    nParticipants: codes.length,
+    /** Nombre de séances agrégées, pour information. */
+    nSeances: completes.length,
+    cohensD: round(cohensDPaired(avant, apres)),
   };
 }
 
 export function deltaParModalite(seances: MesureSeance[]) {
+  const avecDelta = seances.filter((s) => s.deltaCraving !== null);
   const parModalite = (modalite: "CARDIO" | "MUSCULATION") =>
-    seances
-      .filter((s) => s.modalite === modalite && s.deltaCraving !== null)
-      .map((s) => s.deltaCraving as number);
+    moyenneParParticipant(
+      avecDelta.filter((s) => s.modalite === modalite),
+      (s) => s.deltaCraving
+    );
 
-  const cardio = parModalite("CARDIO");
-  const muscu = parModalite("MUSCULATION");
+  const cardioParPart = parModalite("CARDIO");
+  const muscuParPart = parModalite("MUSCULATION");
+
+  // Chaque participant réalise les DEUX modalités : la comparaison est
+  // intra-sujet. On l'analyse donc en apparié, sur une valeur par participant,
+  // et non comme deux groupes indépendants de séances.
+  const codesApparies = [...cardioParPart.keys()].filter((c) => muscuParPart.has(c));
+  const cardioApparie = codesApparies.map((c) => cardioParPart.get(c)!);
+  const muscuApparie = codesApparies.map((c) => muscuParPart.get(c)!);
+
+  const cardio = [...cardioParPart.values()];
+  const muscu = [...muscuParPart.values()];
 
   return {
     chart: [
       {
         label: "Cardio",
         moyenne: round(mean(cardio)) ?? 0,
+        // Écart-type entre participants : c'est la variabilité pertinente ici.
         ecartType: round(stdDev(cardio)) ?? 0,
       },
       {
@@ -82,11 +122,14 @@ export function deltaParModalite(seances: MesureSeance[]) {
         ecartType: round(stdDev(muscu)) ?? 0,
       },
     ],
-    // Ordre (musculation, cardio) : un d positif signifie que la musculation
-    // fait davantage monter l'envie que le cardio.
-    cohensD: round(cohensDIndependent(muscu, cardio)),
-    nCardio: cardio.length,
-    nMuscu: muscu.length,
+    // dz apparié (musculation − cardio) : un d positif signifie que la
+    // musculation fait davantage monter l'envie que le cardio.
+    cohensD: round(cohensDPaired(cardioApparie, muscuApparie)),
+    /** Participants ayant réalisé les deux modalités — effectif du test. */
+    nParticipants: codesApparies.length,
+    /** Séances agrégées, pour information. */
+    nSeancesCardio: avecDelta.filter((s) => s.modalite === "CARDIO").length,
+    nSeancesMuscu: avecDelta.filter((s) => s.modalite === "MUSCULATION").length,
   };
 }
 

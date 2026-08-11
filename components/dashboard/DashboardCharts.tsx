@@ -52,14 +52,16 @@ type Props = {
     ecartTypeAvant: number | null;
     moyenneApres: number | null;
     ecartTypeApres: number | null;
-    n: number;
+    nParticipants: number;
+    nSeances: number;
     cohensD: number | null;
   };
   delta: {
     chart: { label: string; moyenne: number; ecartType: number }[];
     cohensD: number | null;
-    nCardio: number;
-    nMuscu: number;
+    nParticipants: number;
+    nSeancesCardio: number;
+    nSeancesMuscu: number;
   };
   rpe: {
     chart: { label: string; moyenne: number }[];
@@ -156,9 +158,16 @@ export default function DashboardCharts({
             label="Après"
             value={`${fmt(avantApres.moyenneApres)} ± ${fmt(avantApres.ecartTypeApres)}`}
           />
-          <StatLine label="n (paires)" value={String(avantApres.n)} />
-          <StatLine label="d de Cohen (apparié)" value={fmt(avantApres.cohensD)} />
+          <StatLine label="n (participants)" value={String(avantApres.nParticipants)} />
+          <StatLine label="Séances agrégées" value={String(avantApres.nSeances)} />
+          <StatLine label="d de Cohen (dz apparié)" value={fmt(avantApres.cohensD)} />
         </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Chaque participant fournit plusieurs séances : elles sont d&apos;abord moyennées par
+          participant, puis comparées en apparié. L&apos;unité d&apos;analyse est le participant
+          (n={avantApres.nParticipants}), pas la séance — sinon les observations ne seraient pas
+          indépendantes.
+        </p>
       </Card>
 
       <Card title="Delta craving par modalité (cardio vs musculation)">
@@ -174,12 +183,21 @@ export default function DashboardCharts({
           </BarChart>
         </ResponsiveContainer>
         <div className="mt-4">
-          <StatLine label="n cardio / musculation" value={`${delta.nCardio} / ${delta.nMuscu}`} />
+          <StatLine label="n (participants)" value={String(delta.nParticipants)} />
           <StatLine
-            label="d de Cohen (musculation vs cardio)"
+            label="Séances agrégées (cardio / muscu)"
+            value={`${delta.nSeancesCardio} / ${delta.nSeancesMuscu}`}
+          />
+          <StatLine
+            label="d de Cohen (dz apparié, muscu vs cardio)"
             value={fmt(delta.cohensD)}
           />
         </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Tous les participants réalisent les deux modalités : la comparaison est intra-sujet.
+          Les séances sont moyennées par participant, puis comparées en apparié
+          (n={delta.nParticipants}). Les barres montrent l&apos;écart-type entre participants.
+        </p>
       </Card>
 
       <Card title="Envie avant séance selon le délai depuis la dernière consommation">
@@ -226,7 +244,11 @@ export default function DashboardCharts({
           Chaque point est une séance. Permet de vérifier que l&apos;envie mesurée avant
           l&apos;effort dépend du temps écoulé depuis la dernière prise — un facteur à contrôler
           avant d&apos;attribuer un effet au sport. {delaiConso.nAbstinents} séance(s) au-delà de
-          24 h sans consommation sont écartées : le manque aigu y est déjà passé.
+          24 h sans consommation sont écartées : le manque aigu y est déjà passé.{" "}
+          <strong className="font-medium">
+            Le r est calculé sur les séances, qui se répètent chez les mêmes participants : à lire
+            comme une tendance descriptive, pas comme un test.
+          </strong>
         </p>
       </Card>
 
