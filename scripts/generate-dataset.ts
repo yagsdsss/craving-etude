@@ -30,7 +30,7 @@ function mulberry32(seed: number) {
 // (via SEED=... npx tsx scripts/generate-dataset.ts) pour que les statistiques
 // réalisées tombent dans les cibles visées — avec ~50 séances par modalité, le
 // bruit d'échantillonnage sur le d de Cohen est de l'ordre de ±0,2.
-const SEED = Number(process.env.SEED ?? 7024);
+const SEED = Number(process.env.SEED ?? 4444);
 const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -109,8 +109,6 @@ type Profil = {
   capacite: number;
   consoBase: number;
   weekend: number;
-  usePuff: boolean;
-  useSnus: boolean;
 };
 
 const PROFILS: Record<string, Profil> = {
@@ -118,53 +116,53 @@ const PROFILS: Record<string, Profil> = {
   motive: {
     id: "motive", nom: "Motivé qui décroche", trajectoire: "arret",
     oubli: 0.06, absence: 0.04, dependance: 0.45, motivation: 0.85, capacite: 0.8,
-    consoBase: 14, weekend: 1.0, usePuff: true, useSnus: false,
+    consoBase: 14, weekend: 1.0,
   },
   regulier: {
     id: "regulier", nom: "Régulier persévérant", trajectoire: "reduction",
     oubli: 0.05, absence: 0.06, dependance: 0.5, motivation: 0.6, capacite: 0.6,
-    consoBase: 16, weekend: 1.2, usePuff: false, useSnus: false,
+    consoBase: 16, weekend: 1.2,
   },
   lutte: {
     id: "lutte", nom: "Dépendant en lutte", trajectoire: "lutte",
     oubli: 0.13, absence: 0.14, dependance: 0.85, motivation: 0.4, capacite: 0.3,
-    consoBase: 22, weekend: 1.5, usePuff: false, useSnus: true,
+    consoBase: 22, weekend: 1.5,
   },
   irregulier: {
     id: "irregulier", nom: "Irrégulier distrait", trajectoire: "reduction",
     oubli: 0.28, absence: 0.25, dependance: 0.55, motivation: 0.5, capacite: 0.45,
-    consoBase: 17, weekend: 2.0, usePuff: true, useSnus: false,
+    consoBase: 17, weekend: 2.0,
   },
   weekendExp: {
     id: "weekendExp", nom: "Fumeur du week-end", trajectoire: "reduction",
     oubli: 0.1, absence: 0.1, dependance: 0.35, motivation: 0.65, capacite: 0.7,
-    consoBase: 9, weekend: 2.5, usePuff: true, useSnus: false,
+    consoBase: 9, weekend: 2.5,
   },
   // --- Contrôles (craving stable, aucune baisse) ---
   stableAssidu: {
     id: "stableAssidu", nom: "Stable assidu", trajectoire: "stable",
     oubli: 0.05, absence: 0, dependance: 0.55, motivation: 0.4, capacite: 0.45,
-    consoBase: 16, weekend: 1.2, usePuff: false, useSnus: false,
+    consoBase: 16, weekend: 1.2,
   },
   stableIrregulier: {
     id: "stableIrregulier", nom: "Stable irrégulier", trajectoire: "stable",
     oubli: 0.26, absence: 0, dependance: 0.6, motivation: 0.45, capacite: 0.5,
-    consoBase: 18, weekend: 1.8, usePuff: true, useSnus: false,
+    consoBase: 18, weekend: 1.8,
   },
   grosFumeur: {
     id: "grosFumeur", nom: "Gros fumeur stable", trajectoire: "stable",
     oubli: 0.1, absence: 0, dependance: 0.9, motivation: 0.3, capacite: 0.25,
-    consoBase: 24, weekend: 1.3, usePuff: false, useSnus: true,
+    consoBase: 24, weekend: 1.3,
   },
   weekendCtrl: {
     id: "weekendCtrl", nom: "Fumeur week-end stable", trajectoire: "stable",
     oubli: 0.15, absence: 0, dependance: 0.4, motivation: 0.5, capacite: 0.55,
-    consoBase: 10, weekend: 2.5, usePuff: true, useSnus: false,
+    consoBase: 10, weekend: 2.5,
   },
   legerStable: {
     id: "legerStable", nom: "Léger stable", trajectoire: "stable",
     oubli: 0.08, absence: 0, dependance: 0.3, motivation: 0.55, capacite: 0.6,
-    consoBase: 8, weekend: 1.5, usePuff: false, useSnus: false,
+    consoBase: 8, weekend: 1.5,
   },
 };
 
@@ -177,6 +175,41 @@ const ASSIGNATION: Record<string, string> = {
   P10: "legerStable", P12: "stableAssidu", P14: "stableIrregulier", P16: "grosFumeur",
   P18: "weekendCtrl", P20: "legerStable",
 };
+
+// ---------------------------------------------------------------------------
+// Produits consommés — règle de l'étude
+// ---------------------------------------------------------------------------
+// Un participant consomme SOIT la puff, SOIT la cigarette, jamais les deux.
+// Seule exception : les consommateurs de snus, qui peuvent cumuler puff ET
+// cigarette. Ils sont au maximum 3 (ici les profils les plus dépendants).
+type Produits = { puff: boolean; cigarette: boolean; snus: boolean };
+
+// Équivalence nicotinique utilisée par le tableau de bord (lib/analytics.ts) :
+// 1 % du goût puff ≈ 0,5 cigarette. Sert ici à convertir une consommation
+// exprimée en équivalent cigarette vers le % de puff à déclarer.
+const CIG_PAR_POURCENT_PUFF = 0.5;
+
+const CONSOMMATEURS_SNUS = ["P07", "P15", "P06"]; // 3 max, répartis exp./contrôle
+
+const PRODUITS: Record<string, Produits> = (() => {
+  const map: Record<string, Produits> = {};
+  // L'alternance se fait À L'INTÉRIEUR de chaque groupe : sinon le produit
+  // consommé serait confondu avec l'appartenance au groupe expérimental.
+  for (const groupe of ["EXPERIMENTAL", "CONTROLE"] as const) {
+    let rang = 0;
+    for (const p of PARTICIPANTS.filter((x) => x.groupe === groupe)) {
+      if (CONSOMMATEURS_SNUS.includes(p.code)) {
+        // Consommateur de snus : seul cas où le cumul puff + cigarette est admis.
+        map[p.code] = { puff: true, cigarette: true, snus: true };
+        continue;
+      }
+      const puffSeul = rang % 2 === 0;
+      map[p.code] = { puff: puffSeul, cigarette: !puffSeul, snus: false };
+      rang++;
+    }
+  }
+  return map;
+})();
 
 // ---------------------------------------------------------------------------
 // Modèles d'évolution
@@ -310,6 +343,7 @@ const SUIVIS: SuiviRow[] = [];
 // ---------------------------------------------------------------------------
 for (const participant of PARTICIPANTS) {
   const profil = PROFILS[ASSIGNATION[participant.code]];
+  const produits = PRODUITS[participant.code];
   const cravBase = 2.5 + profil.dependance * 5.5;
 
   // ----- Carnet quotidien (6 semaines) -----
@@ -334,14 +368,28 @@ for (const participant of PARTICIPANTS) {
       if (consoJour < 0.5) crav -= 1.5; // l'arrêt soulage le manque
       crav += rand(-1, 1);
 
+      // Répartition de la consommation du jour entre les produits réellement
+      // utilisés par ce participant (puff OU cigarette, sauf consommateurs de snus).
+      const partSnus = produits.snus ? Math.round(consoJour * 0.05) : 0;
+      const reste = Math.max(0, consoJour - partSnus);
+      const equivPuff = produits.puff ? (produits.cigarette ? reste * 0.5 : reste) : 0;
+      const equivCigarette = produits.cigarette ? (produits.puff ? reste * 0.5 : reste) : 0;
+
       CARNETS.push({
         participantCode: participant.code,
         date: date.toISOString(),
-        cigarettes: chance(0.05) ? null : Math.round(consoJour * (profil.usePuff ? 0.7 : 0.9)),
-        puffPourcentage: profil.usePuff
-          ? chance(0.05) ? null : Math.round(clamp(4 * facteur + rand(-1.5, 1.5), 0, 100))
-          : null,
-        snusSachets: profil.useSnus ? Math.round(consoJour * 0.05) : 0,
+        // Un produit non consommé est déclaré à 0 (et non "manquant").
+        cigarettes: !produits.cigarette
+          ? 0
+          : chance(0.05)
+            ? null
+            : Math.round(equivCigarette),
+        puffPourcentage: !produits.puff
+          ? 0
+          : chance(0.05)
+            ? null
+            : Math.round(clamp(equivPuff / CIG_PAR_POURCENT_PUFF, 0, 100)),
+        snusSachets: partSnus,
         cravingMoyenJour: chance(0.05) ? null : Math.round(clamp(crav, 0, 10)),
         evenementParticulier: chance(0.07)
           ? pick(
@@ -451,18 +499,39 @@ for (const participant of PARTICIPANTS) {
     // Motivation/capacité : montent pour les expérimentaux, stables pour les contrôles.
     const bonusMotiv = profil.trajectoire === "stable" ? 0 : index * 1.5;
 
+    // Même règle d'exclusivité qu'au carnet : un produit non consommé est à 0.
+    const partSnusSem = produits.snus ? consoDay * 0.05 : 0;
+    const resteSem = Math.max(0, consoDay - partSnusSem);
+    const equivPuffSem = produits.puff ? (produits.cigarette ? resteSem * 0.5 : resteSem) : 0;
+    const equivCigSem = produits.cigarette ? (produits.puff ? resteSem * 0.5 : resteSem) : 0;
+
+    // Envie d'arrêter : à l'inclusion (T0) tous les participants se situent entre
+    // 3 et 7 ; elle ne progresse ensuite que pour le groupe qui s'entraîne.
+    const envieBase = 3 + profil.motivation * 4; // 3..7
+    const envieT0 = clamp(envieBase + rand(-0.6, 0.6), 3, 7);
+
     SUIVIS.push({
       participantCode: participant.code,
       temps,
-      consoCigaretteSemaine: chance(0.06) ? null : round1((consoDay * 7) / 20),
-      consoPuffSemaine: profil.usePuff
-        ? chance(0.1) ? null : round1(clamp(6 * facteurConso(profil.trajectoire, semaineRef) + rand(-1, 1), 0, 20))
-        : null,
-      consoSnusSemaine: profil.useSnus ? (chance(0.1) ? null : randInt(0, 3)) : null,
+      // Paquets de 20 cigarettes par semaine.
+      consoCigaretteSemaine: !produits.cigarette
+        ? 0
+        : chance(0.06)
+          ? null
+          : round1((equivCigSem * 7) / 20),
+      // Nombre de dispositifs puff consommés dans la semaine (1 puff ≈ 100 % du goût).
+      consoPuffSemaine: !produits.puff
+        ? 0
+        : chance(0.1)
+          ? null
+          : round1(clamp((equivPuffSem / CIG_PAR_POURCENT_PUFF / 100) * 7, 0, 20)),
+      consoSnusSemaine: !produits.snus ? 0 : chance(0.1) ? null : randInt(0, 3),
       poids,
       taille,
       imc: computeImc(poids, taille),
-      envieArreter: chance(0.04) ? null : Math.round(clamp(profil.motivation * 10 + bonusMotiv + rand(-1, 1), 0, 10)),
+      envieArreter: chance(0.04)
+        ? null
+        : Math.round(clamp(envieT0 + bonusMotiv, 0, 10)),
       capaciteReduireConso: chance(0.04)
         ? null
         : Math.round(clamp(profil.capacite * 10 + bonusMotiv + rand(-1, 1), 0, 10)),
