@@ -30,7 +30,7 @@ function mulberry32(seed: number) {
 // (via SEED=... npx tsx scripts/generate-dataset.ts) pour que les statistiques
 // réalisées tombent dans les cibles visées — avec ~50 séances par modalité, le
 // bruit d'échantillonnage sur le d de Cohen est de l'ordre de ±0,2.
-const SEED = Number(process.env.SEED ?? 4444);
+const SEED = Number(process.env.SEED ?? 3690);
 const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -447,6 +447,33 @@ for (const participant of PARTICIPANTS) {
         );
         heureDebut.setUTCHours(randInt(9, 19), chance(0.5) ? 0 : 30);
 
+        // A-t-il déjà arrêté la nicotine à cette semaine ?
+        const aArrete =
+          profil.trajectoire === "arret" && facteurConso(profil.trajectoire, semaine) === 0;
+
+        // Délai depuis la dernière consommation AVANT la séance.
+        // Plus l'abstinence dure, plus l'envie est forte : on relie donc cette
+        // durée au craving mesuré avant la séance (relation attendue, avec bruit).
+        // Un participant qui a arrêté est abstinent depuis plusieurs jours.
+        const heuresDepuis = aArrete
+          ? round1(rand(24, 96))
+          : chance(0.05)
+            ? null
+            : round1(clamp(0.4 + ((cravingAvant ?? 5) / 10) * 5 + rand(-2.2, 2.2), 0.2, 9));
+
+        // Délai avant la première consommation APRÈS la séance : d'autant plus
+        // court que l'envie ressentie en fin de séance est forte.
+        const delaiApres = aArrete
+          ? "AUCUNE"
+          : chance(0.04)
+            ? null
+            : (() => {
+                const envie = (cravingApres ?? cravAvantBase) + rand(-1, 1);
+                if (envie >= 7) return chance(0.75) ? "MIN_15" : "MIN_30";
+                if (envie >= 5) return chance(0.55) ? "MIN_30" : chance(0.5) ? "MIN_15" : "PLUS_1H";
+                return chance(0.6) ? "PLUS_1H" : chance(0.7) ? "MIN_30" : "AUCUNE";
+              })();
+
         // QSU (fin de séance) : suit le niveau de craving après la séance.
         const qsuBase = clamp((cravingApres ?? cravAvantBase) * 0.75, 1, 7);
         const qsuAnswers = Object.fromEntries(
@@ -471,7 +498,8 @@ for (const participant of PARTICIPANTS) {
           rpeReel: chance(0.04)
             ? null
             : Math.round(clamp((modalite === "MUSCULATION" ? 7 : 6.2) + rand(-1.3, 1.3), 0, 10)),
-          heuresDepuisDerniereConso: round1(rand(0.5, 6)),
+          heuresDepuisDerniereConso: heuresDepuis,
+          delaiConsoApresSeance: delaiApres,
           remarque: chance(0.12)
             ? pick(["Séance difficile.", "Bonne énergie.", "Envie remontée après.", "Motivation ok."])
             : null,

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import ScaleButtons from "@/components/ScaleButtons";
 import LikertButtons from "@/components/LikertButtons";
 import { QSU_ITEMS } from "@/lib/qsu";
+import { DELAI_CONSO_ITEMS, DelaiConso } from "@/lib/delaiConso";
 import { flushQueue, pendingCount, submitWithOfflineFallback } from "@/lib/offlineSync";
 
 const DRAFT_KEY = "seance-draft-v1";
@@ -23,6 +24,7 @@ type Draft = {
   cravingApres: number | null;
   rpeReel: number | null;
   remarque: string;
+  delaiConsoApresSeance: DelaiConso | null;
   qsu: Record<string, number | null>;
 };
 
@@ -42,6 +44,7 @@ const emptyDraft: Draft = {
   cravingApres: null,
   rpeReel: null,
   remarque: "",
+  delaiConsoApresSeance: null,
   qsu: emptyQsu,
 };
 
@@ -131,6 +134,7 @@ export default function SaisieSeancePage() {
         ? Number(draft.heuresDepuisDerniereConso)
         : null,
       remarque: draft.remarque || null,
+      delaiConsoApresSeance: draft.delaiConsoApresSeance,
       ...draft.qsu,
     };
 
@@ -408,10 +412,43 @@ export default function SaisieSeancePage() {
               ))}
             </div>
 
+            <div className="border-t border-slate-200 pt-6">
+              <p className="mb-1 text-sm font-medium text-slate-700">
+                Après cette séance, quand as-tu consommé de la nicotine pour la première fois ?
+              </p>
+              <p className="mb-3 text-xs text-slate-500">Une seule réponse.</p>
+              <div className="space-y-2">
+                {DELAI_CONSO_ITEMS.map((item) => {
+                  const selectionne = draft.delaiConsoApresSeance === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => update({ delaiConsoApresSeance: item.value })}
+                      className={`flex h-14 w-full items-center gap-3 rounded-xl px-4 text-left text-base transition ${
+                        selectionne
+                          ? "bg-slate-900 text-white"
+                          : "bg-white text-slate-700 ring-1 ring-slate-200"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                          selectionne ? "border-white" : "border-slate-300"
+                        }`}
+                      >
+                        {selectionne && <span className="h-2.5 w-2.5 rounded-full bg-white" />}
+                      </span>
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {saveError && <p className="text-sm text-red-600">{saveError}</p>}
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || draft.delaiConsoApresSeance === null}
               onClick={handleSave}
               className="h-16 w-full rounded-2xl bg-slate-900 text-lg font-semibold text-white disabled:opacity-30"
             >

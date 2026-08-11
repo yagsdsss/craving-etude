@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   avantApresGlobal,
   consommationParSemaine,
+  cravingSelonDelaiConso,
   qsuParSemaine,
   deltaParModalite,
   effetSeanceParSemaine,
@@ -39,6 +40,7 @@ export default async function AdminDashboardPage() {
     consommation: consommationParSemaine(carnets, participants),
     envieSemaine: envieQuotidienneParSemaine(carnets, participants),
     motivation: motivationParTemps(suivis, participants),
+    delaiConso: cravingSelonDelaiConso(seances),
     trajectoires: trajectoiresIndividuelles(carnets, participants),
     participantCodes: participants.map((p) => p.code),
     presence: tauxPresenceParParticipant(seances, participants),

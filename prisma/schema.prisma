@@ -43,6 +43,15 @@ enum Temps {
   T2
 }
 
+/// Délai avant la première consommation de nicotine APRÈS la séance de sport.
+/// AUCUNE = le participant n'a pas consommé après la séance.
+enum DelaiConsoApresSeance {
+  MIN_15
+  MIN_30
+  PLUS_1H
+  AUCUNE
+}
+
 model Participant {
   code   String @id
   groupe Groupe
@@ -78,6 +87,10 @@ model MesureSeance {
   rpeReel                   Int?
   heuresDepuisDerniereConso Float?
   remarque                  String?
+
+  /// Délai avant la première consommation de nicotine après la séance,
+  /// renseigné en fin de questionnaire post-séance.
+  delaiConsoApresSeance DelaiConsoApresSeance?
 
   /// QSU-Brief (Cox, Tiffany & Christen, 2001), adapté à la nicotine — rempli à la
   /// FIN de la séance de sport. 10 items, échelle 1 (pas du tout d'accord) à 7 (tout à fait d'accord).

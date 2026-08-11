@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DataEditor, { FieldConfig } from "@/components/admin/DataEditor";
+import { DELAI_CONSO_ITEMS } from "@/lib/delaiConso";
 
 const SEXE_OPTIONS = [
   { value: "HOMME", label: "Homme" },
@@ -25,6 +26,7 @@ const ORDRE_OPTIONS = [
   { value: "PREMIERE", label: "1ère séance" },
   { value: "DEUXIEME", label: "2e séance" },
 ];
+const DELAI_CONSO_OPTIONS = DELAI_CONSO_ITEMS.map((i) => ({ value: i.value, label: i.label }));
 const TEMPS_OPTIONS = [
   { value: "T0", label: "T0" },
   { value: "T1", label: "T1" },
@@ -59,6 +61,12 @@ const seanceFields: FieldConfig[] = [
   { key: "deltaCraving", label: "Delta", type: "number", readOnly: true },
   { key: "rpeReel", label: "RPE (0-10)", type: "number", min: 0, max: 10 },
   { key: "heuresDepuisDerniereConso", label: "Heures depuis conso", type: "number", min: 0 },
+  {
+    key: "delaiConsoApresSeance",
+    label: "1re conso après la séance",
+    type: "select",
+    options: DELAI_CONSO_OPTIONS,
+  },
   { key: "remarque", label: "Remarque", type: "textarea" },
   ...qsuFields,
   { key: "qsuScoreTotal", label: "Score QSU total", type: "number", readOnly: true },

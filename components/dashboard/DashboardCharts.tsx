@@ -9,9 +9,12 @@ import {
   Line,
   LineChart,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
+  ZAxis,
 } from "recharts";
 
 const INDIGO = "#5E5CE6";
@@ -65,6 +68,13 @@ type Props = {
   qsuSemaine: { semaine: string; score: number | null }[];
   consommation: { semaine: string; experimental: number | null; controle: number | null }[];
   envieSemaine: { semaine: string; experimental: number | null; controle: number | null }[];
+  delaiConso: {
+    points: { heures: number; craving: number; modalite: string }[];
+    n: number;
+    nAbstinents: number;
+    correlation: number | null;
+    heuresMoyenne: number | null;
+  };
   motivation: {
     chart: {
       temps: string;
@@ -118,6 +128,7 @@ export default function DashboardCharts({
   consommation,
   envieSemaine,
   motivation,
+  delaiConso,
   trajectoires,
   participantCodes,
   presence,
@@ -169,6 +180,54 @@ export default function DashboardCharts({
             value={fmt(delta.cohensD)}
           />
         </div>
+      </Card>
+
+      <Card title="Envie avant séance selon le délai depuis la dernière consommation">
+        <ResponsiveContainer width="100%" height={260}>
+          <ScatterChart margin={{ top: 8, right: 8, bottom: 16, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+            <XAxis
+              type="number"
+              dataKey="heures"
+              name="Heures depuis la dernière conso"
+              unit=" h"
+              domain={[0, "dataMax"]}
+              label={{ value: "Heures depuis la dernière conso", position: "insideBottom", offset: -8, fontSize: 11 }}
+            />
+            <YAxis
+              type="number"
+              dataKey="craving"
+              name="Envie avant séance"
+              domain={[0, 10]}
+            />
+            <ZAxis range={[45, 45]} />
+            <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+            <Legend verticalAlign="top" height={28} />
+            <Scatter
+              name="Cardio"
+              data={delaiConso.points.filter((p) => p.modalite === "CARDIO")}
+              fill={INDIGO}
+              fillOpacity={0.65}
+            />
+            <Scatter
+              name="Musculation"
+              data={delaiConso.points.filter((p) => p.modalite === "MUSCULATION")}
+              fill={EMERALD}
+              fillOpacity={0.65}
+            />
+          </ScatterChart>
+        </ResponsiveContainer>
+        <div className="mt-4">
+          <StatLine label="n (séances)" value={String(delaiConso.n)} />
+          <StatLine label="Délai moyen" value={`${fmt(delaiConso.heuresMoyenne)} h`} />
+          <StatLine label="Corrélation (r de Pearson)" value={fmt(delaiConso.correlation)} />
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Chaque point est une séance. Permet de vérifier que l&apos;envie mesurée avant
+          l&apos;effort dépend du temps écoulé depuis la dernière prise — un facteur à contrôler
+          avant d&apos;attribuer un effet au sport. {delaiConso.nAbstinents} séance(s) au-delà de
+          24 h sans consommation sont écartées : le manque aigu y est déjà passé.
+        </p>
       </Card>
 
       <Card title="Score QSU-Brief moyen par semaine (fin de séance)">

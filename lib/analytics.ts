@@ -180,6 +180,62 @@ export function envieQuotidienneParSemaine(carnets: CarnetJour[], participants: 
 }
 
 /**
+ * Envie avant séance en fonction du délai écoulé depuis la dernière
+ * consommation : chaque point est une séance. Sert à vérifier que l'effet
+ * mesuré n'est pas simplement dû au temps d'abstinence avant l'effort.
+ * Renvoie aussi la corrélation de Pearson entre les deux variables.
+ */
+export function cravingSelonDelaiConso(seances: MesureSeance[]) {
+  const renseignees = seances.filter(
+    (s) => s.heuresDepuisDerniereConso !== null && s.cravingAvant !== null
+  );
+
+  // Au-delà de 24 h, le participant a cessé de consommer : le manque aigu est
+  // passé et la relation s'inverse. Ces séances relèvent d'un autre régime et
+  // sont écartées du nuage, qui porte sur les consommateurs encore actifs.
+  const SEUIL_ABSTINENCE_H = 24;
+  const rows = renseignees.filter(
+    (s) => (s.heuresDepuisDerniereConso as number) < SEUIL_ABSTINENCE_H
+  );
+  const nAbstinents = renseignees.length - rows.length;
+
+  const points = rows.map((s) => ({
+    heures: s.heuresDepuisDerniereConso as number,
+    craving: s.cravingAvant as number,
+    modalite: s.modalite,
+  }));
+
+  const xs = points.map((p) => p.heures);
+  const ys = points.map((p) => p.craving);
+  const mx = mean(xs);
+  const my = mean(ys);
+
+  let correlation: number | null = null;
+  if (mx !== null && my !== null && points.length > 2) {
+    let num = 0;
+    let dx = 0;
+    let dy = 0;
+    for (let i = 0; i < points.length; i++) {
+      const a = xs[i] - mx;
+      const b = ys[i] - my;
+      num += a * b;
+      dx += a * a;
+      dy += b * b;
+    }
+    const den = Math.sqrt(dx * dy);
+    correlation = den === 0 ? null : num / den;
+  }
+
+  return {
+    points,
+    n: points.length,
+    nAbstinents,
+    correlation: round(correlation),
+    heuresMoyenne: round(mx),
+  };
+}
+
+/**
  * Envie d'arrêter et capacité perçue à réduire, aux trois temps de mesure,
  * séparément pour chaque groupe. Échelles 0-10.
  */

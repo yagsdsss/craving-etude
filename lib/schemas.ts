@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DELAI_CONSO_VALUES } from "@/lib/delaiConso";
 
 const scale0to10 = z.number().int().min(0).max(10);
 
@@ -58,6 +59,7 @@ export const mesureSeanceSchema = z.object({
   rpeReel: scale0to10.nullable().optional(),
   heuresDepuisDerniereConso: z.number().min(0).nullable().optional(),
   remarque: z.string().nullable().optional(),
+  delaiConsoApresSeance: z.enum(DELAI_CONSO_VALUES).nullable().optional(),
   ...qsuFields,
 });
 
@@ -107,6 +109,7 @@ export const mesureSeanceUpdateSchema = z.object({
   rpeReel: scale0to10.nullable().optional(),
   heuresDepuisDerniereConso: z.number().min(0).nullable().optional(),
   remarque: z.string().nullable().optional(),
+  delaiConsoApresSeance: z.enum(DELAI_CONSO_VALUES).nullable().optional(),
   ...qsuFields,
 });
 
