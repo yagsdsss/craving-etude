@@ -168,8 +168,11 @@ const PROFILS: Record<string, Profil> = {
 
 // Attribution déterministe d'un profil à chaque participant.
 // (P07 reste "dépendant en lutte" pour rester cohérent avec l'historique.)
+// Deux participants seulement suivent la trajectoire "arret" : chacun d'eux tire
+// la moyenne du groupe de 10 points de pourcentage à lui seul, et au-delà de deux
+// la consommation moyenne s'effondrerait au lieu de refléter une réduction.
 const ASSIGNATION: Record<string, string> = {
-  P01: "motive", P03: "regulier", P05: "weekendExp", P07: "lutte", P09: "motive",
+  P01: "motive", P03: "regulier", P05: "weekendExp", P07: "lutte", P09: "regulier",
   P11: "irregulier", P13: "regulier", P15: "lutte", P17: "motive", P19: "weekendExp",
   P02: "stableAssidu", P04: "stableIrregulier", P06: "grosFumeur", P08: "weekendCtrl",
   P10: "legerStable", P12: "stableAssidu", P14: "stableIrregulier", P16: "grosFumeur",
@@ -217,12 +220,14 @@ const PRODUITS: Record<string, Produits> = (() => {
 const STUDY_START = new Date("2026-07-01T00:00:00.000Z");
 
 // Facteur de consommation (0..1) selon la trajectoire et la semaine (1..6).
+// Les pentes restent modérées : sur 6 semaines, une intervention de ce type
+// produit une réduction sensible mais pas un effondrement de la consommation.
 function facteurConso(t: Trajectoire, semaine: number): number {
   const p = (semaine - 1) / 5; // 0..1
   switch (t) {
     case "arret": return clamp(1 - (semaine - 1) / 3, 0, 1); // 0 dès la semaine 4
-    case "reduction": return 1 - 0.5 * p;
-    case "lutte": return 1 - 0.12 * p;
+    case "reduction": return 1 - 0.12 * p;
+    case "lutte": return 1 - 0.05 * p;
     case "stable": return 1;
   }
 }
@@ -434,7 +439,7 @@ for (const participant of PARTICIPANTS) {
         // la laisse globalement inchangée. L'écart entre modalités reste faible
         // devant la variabilité individuelle -> taille d'effet modérée (d ≈ 0,3-0,4)
         // et distributions qui se chevauchent, comme dans une vraie étude.
-        const effetModalite = modalite === "MUSCULATION" ? 0.9 : 0.45;
+        const effetModalite = modalite === "MUSCULATION" ? 0.78 : 0.55;
         const delta = randNormal(effetModalite + sensibiliteIndiv, 1.6);
         const cravingApres =
           cravingAvant === null || chance(0.04)
@@ -497,7 +502,9 @@ for (const participant of PARTICIPANTS) {
             cravingAvant !== null && cravingApres !== null ? cravingApres - cravingAvant : null,
           rpeReel: chance(0.04)
             ? null
-            : Math.round(clamp((modalite === "MUSCULATION" ? 7 : 6.2) + rand(-1.3, 1.3), 0, 10)),
+            // Écart RPE volontairement faible : les deux modalités sont calibrées
+            // pour être perçues comme d'intensité comparable (contrôle de validité).
+            : Math.round(clamp((modalite === "MUSCULATION" ? 6.7 : 6.45) + rand(-1.3, 1.3), 0, 10)),
           heuresDepuisDerniereConso: heuresDepuis,
           delaiConsoApresSeance: delaiApres,
           remarque: chance(0.12)
