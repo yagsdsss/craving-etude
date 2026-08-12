@@ -122,6 +122,24 @@ function StatLine({ label, value }: { label: string; value: string }) {
 
 const fmt = (v: number | null) => (v === null ? "—" : v.toString());
 
+// Libellés d'axes : indiquent ce qui est mesuré et dans quelle unité.
+const AXE_STYLE = { fontSize: 11, fill: "#94A3B8" };
+const axeX = (value: string) => ({
+  value,
+  position: "insideBottom" as const,
+  offset: -10,
+  ...AXE_STYLE,
+});
+const axeY = (value: string) => ({
+  value,
+  angle: -90,
+  position: "insideLeft" as const,
+  style: { textAnchor: "middle" as const },
+  ...AXE_STYLE,
+});
+// Marges laissant la place aux libellés d'axes.
+const MARGES = { top: 8, right: 12, bottom: 28, left: 4 };
+
 export default function DashboardCharts({
   avantApres,
   delta,
@@ -141,10 +159,10 @@ export default function DashboardCharts({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <Card title="Craving avant vs après séance (moyenne sur toutes les séances)">
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={avantApres.chart}>
+          <BarChart data={avantApres.chart} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="label" />
-            <YAxis domain={[0, 10]} />
+            <XAxis dataKey="label" label={axeX("Moment de la mesure")} />
+            <YAxis domain={[0, 10]} label={axeY("Envie de nicotine (0-10)")} />
             <Tooltip />
             <Bar dataKey="moyenne" fill={INDIGO} radius={[6, 6, 0, 0]} />
           </BarChart>
@@ -172,10 +190,10 @@ export default function DashboardCharts({
 
       <Card title="Delta craving par modalité (cardio vs musculation)">
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={delta.chart}>
+          <BarChart data={delta.chart} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="label" />
-            <YAxis />
+            <XAxis dataKey="label" label={axeX("Modalité de la séance")} />
+            <YAxis label={axeY("Variation d'envie (après − avant)")} />
             <Tooltip />
             <Bar dataKey="moyenne" fill={EMERALD} radius={[6, 6, 0, 0]}>
               <ErrorBar dataKey="ecartType" width={4} strokeWidth={2} stroke="#334155" />
@@ -202,21 +220,22 @@ export default function DashboardCharts({
 
       <Card title="Envie avant séance selon le délai depuis la dernière consommation">
         <ResponsiveContainer width="100%" height={260}>
-          <ScatterChart margin={{ top: 8, right: 8, bottom: 16, left: 0 }}>
+          <ScatterChart margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
             <XAxis
               type="number"
               dataKey="heures"
-              name="Heures depuis la dernière conso"
+              name="Délai depuis la dernière conso"
               unit=" h"
               domain={[0, "dataMax"]}
-              label={{ value: "Heures depuis la dernière conso", position: "insideBottom", offset: -8, fontSize: 11 }}
+              label={axeX("Délai depuis la dernière consommation (heures)")}
             />
             <YAxis
               type="number"
               dataKey="craving"
               name="Envie avant séance"
               domain={[0, 10]}
+              label={axeY("Envie avant séance (0-10)")}
             />
             <ZAxis range={[45, 45]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
@@ -254,10 +273,10 @@ export default function DashboardCharts({
 
       <Card title="Score QSU-Brief moyen par semaine (fin de séance)">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={qsuSemaine}>
+          <LineChart data={qsuSemaine} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="semaine" />
-            <YAxis domain={[1, 7]} />
+            <XAxis dataKey="semaine" label={axeX("Semaine de l'étude")} />
+            <YAxis domain={[1, 7]} label={axeY("Score QSU-Brief (1-7)")} />
             <Tooltip />
             <Line
               type="monotone"
@@ -276,10 +295,10 @@ export default function DashboardCharts({
 
       <Card title="Consommation quotidienne moyenne — semaine par semaine">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={consommation}>
+          <LineChart data={consommation} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="semaine" />
-            <YAxis />
+            <XAxis dataKey="semaine" label={axeX("Semaine de l'étude")} />
+            <YAxis label={axeY("Conso/jour (équiv. cigarettes)")} />
             <Tooltip />
             <Legend />
             <Line
@@ -304,10 +323,10 @@ export default function DashboardCharts({
 
       <Card title="Envie quotidienne moyenne — semaine par semaine (carnet)">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={envieSemaine}>
+          <LineChart data={envieSemaine} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="semaine" />
-            <YAxis domain={[0, 10]} />
+            <XAxis dataKey="semaine" label={axeX("Semaine de l'étude")} />
+            <YAxis domain={[0, 10]} label={axeY("Envie quotidienne (0-10)")} />
             <Tooltip />
             <Legend />
             <Line
@@ -336,10 +355,10 @@ export default function DashboardCharts({
 
       <Card title="Envie d'arrêter et capacité perçue — T0 / T1 / T2">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={motivation.chart}>
+          <LineChart data={motivation.chart} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="temps" />
-            <YAxis domain={[0, 10]} />
+            <XAxis dataKey="temps" label={axeX("Temps de mesure")} />
+            <YAxis domain={[0, 10]} label={axeY("Score déclaré (0-10)")} />
             <Tooltip />
             <Legend />
             <Line
@@ -397,10 +416,10 @@ export default function DashboardCharts({
         title={`Trajectoires individuelles — consommation par semaine (n=${participantCodes.length})`}
       >
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={trajectoires}>
+          <LineChart data={trajectoires} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="semaine" />
-            <YAxis />
+            <XAxis dataKey="semaine" label={axeX("Semaine de l'étude")} />
+            <YAxis label={axeY("Conso/jour (équiv. cigarettes)")} />
             <Tooltip />
             {participantCodes.map((code, i) => (
               <Line
@@ -419,10 +438,10 @@ export default function DashboardCharts({
 
       <Card title="RPE réel — cardio vs musculation (contrôle de validité)">
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={rpe.chart}>
+          <BarChart data={rpe.chart} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="label" />
-            <YAxis domain={[0, 10]} />
+            <XAxis dataKey="label" label={axeX("Modalité de la séance")} />
+            <YAxis domain={[0, 10]} label={axeY("RPE perçu (0-10)")} />
             <Tooltip />
             <Bar dataKey="moyenne" fill={AMBER} radius={[6, 6, 0, 0]} />
           </BarChart>
@@ -434,10 +453,10 @@ export default function DashboardCharts({
 
       <Card title="Taux de présence par participant">
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={presence}>
+          <BarChart data={presence} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="code" />
-            <YAxis domain={[0, 100]} />
+            <XAxis dataKey="code" label={axeX("Participant")} />
+            <YAxis domain={[0, 100]} label={axeY("Séances réalisées (%)")} />
             <Tooltip />
             <Bar dataKey="tauxPresence" fill={INDIGO} radius={[6, 6, 0, 0]} />
           </BarChart>
@@ -450,10 +469,10 @@ export default function DashboardCharts({
 
       <Card title="Effet séance par semaine (envie avant / après et delta)">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={effetSemaine}>
+          <LineChart data={effetSemaine} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-            <XAxis dataKey="semaine" />
-            <YAxis />
+            <XAxis dataKey="semaine" label={axeX("Semaine de l'étude")} />
+            <YAxis label={axeY("Envie de nicotine (0-10)")} />
             <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="avant" name="Envie avant" stroke={INDIGO} strokeWidth={2} />
