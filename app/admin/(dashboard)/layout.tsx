@@ -1,9 +1,16 @@
 import Link from "next/link";
 import LogoutButton from "@/components/LogoutButton";
+import { isAdminAuthDisabled } from "@/lib/auth";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
+      {isAdminAuthDisabled() && (
+        <div className="bg-red-600 px-6 py-2 text-center text-sm font-medium text-white">
+          ⚠️ Accès admin sans mot de passe (ADMIN_AUTH_DISABLED). N&apos;importe qui ayant
+          l&apos;adresse peut voir et modifier les données — à réactiver après la démonstration.
+        </div>
+      )}
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">

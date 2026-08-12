@@ -1,6 +1,17 @@
 const SESSION_COOKIE = "admin_session";
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 jours
 
+/**
+ * Désactivation TEMPORAIRE du mot de passe admin (ADMIN_AUTH_DISABLED=true).
+ *
+ * ⚠️ Tant que ce drapeau est actif, le tableau de bord, l'éditeur de données et
+ * les exports sont accessibles à quiconque connaît l'URL, sans authentification.
+ * À retirer dès que la démonstration ou le test est terminé.
+ */
+export function isAdminAuthDisabled(): boolean {
+  return process.env.ADMIN_AUTH_DISABLED === "true";
+}
+
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error("AUTH_SECRET n'est pas défini");
@@ -39,6 +50,9 @@ export async function createSessionToken(): Promise<string> {
 }
 
 export async function isSessionTokenValid(token: string | undefined): Promise<boolean> {
+  // Court-circuit volontaire : toutes les vérifications d'accès admin (middleware
+  // et routes API) passent par ici, donc ce seul point suffit à tout ouvrir.
+  if (isAdminAuthDisabled()) return true;
   if (!token) return false;
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return false;
