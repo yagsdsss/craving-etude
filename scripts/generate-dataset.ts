@@ -26,11 +26,19 @@ function mulberry32(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-// Graine fixe : jeu de données reproductible à l'identique. Elle est choisie
-// (via SEED=... npx tsx scripts/generate-dataset.ts) pour que les statistiques
-// réalisées tombent dans les cibles visées — avec ~50 séances par modalité, le
-// bruit d'échantillonnage sur le d de Cohen est de l'ordre de ±0,2.
-const SEED = Number(process.env.SEED ?? 7024);
+// ⚠️ GRAINE FIGÉE — NE PLUS LA MODIFIER.
+//
+// Chaque changement de graine (ou de toute ligne consommant de l'aléatoire)
+// produit un jeu de données ENTIÈREMENT DIFFÉRENT. Deux exports réalisés de part
+// et d'autre d'un tel changement ne concordent plus : mêmes codes participants,
+// mais valeurs incompatibles. C'est ingérable dès qu'un chiffre a été cité
+// quelque part.
+//
+// Le jeu de données est désormais celui de référence. Toute retouche ultérieure
+// doit être ciblée (corriger des lignes précises) plutôt que régénérer l'ensemble.
+// Si une régénération complète est vraiment nécessaire, il faut recharger la base
+// en ligne dans la foulée et refaire tous les exports.
+const SEED = Number(process.env.SEED ?? 3690);
 const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -243,17 +251,47 @@ function tendanceCraving(t: Trajectoire, semaine: number): number {
   }
 }
 
-// Réponses au Fagerström cohérentes avec la dépendance et la conso.
-function fagerAnswers(dep: number, consoJour: number) {
-  const bruit = () => rand(-0.4, 0.4);
+/**
+ * Réponses au Fagerström.
+ *
+ * Le Fagerström mesure un trait relativement stable : un même participant doit
+ * répondre de façon cohérente d'un temps de mesure à l'autre, et son score ne
+ * bouge que si sa dépendance bouge réellement. Un bruit tiré à neuf à chaque
+ * passation ferait osciller le score de plusieurs points sans raison — y compris
+ * chez les participants du groupe contrôle, qui ne changent rien.
+ *
+ * On fige donc, pour chaque participant, un décalage de seuil par item
+ * (`seuils`) : les réponses deviennent déterministes à dépendance donnée, et
+ * seule une évolution réelle de la dépendance les fait basculer. Un item peut
+ * malgré tout changer par hasard (fidélité test-retest imparfaite), mais
+ * rarement.
+ */
+type SeuilsFager = number[];
+
+function seuilsFagerParticipant(): SeuilsFager {
+  // Décalages faibles : ils personnalisent les réponses sans les rendre erratiques.
+  return Array.from({ length: 6 }, () => rand(-0.12, 0.12));
+}
+
+function fagerAnswers(dep: number, consoJour: number, seuils: SeuilsFager) {
   const bracket = consoJour <= 10 ? 0 : consoJour <= 20 ? 1 : consoJour <= 30 ? 2 : 3;
+  // Fidélité test-retest imparfaite : un item bascule de temps en temps.
+  const instable = () => chance(0.06);
+  const binaire = (seuil: number, i: number, oui: 0 | 1 = 0) => {
+    const rep = dep + seuils[i] > seuil ? oui : ((1 - oui) as 0 | 1);
+    return instable() ? ((1 - rep) as 0 | 1) : rep;
+  };
+
   return {
-    fager1: chance(0.03) ? null : clamp(Math.round((1 - dep) * 3 + bruit()), 0, 3), // délai 1er usage
-    fager2: chance(0.03) ? null : dep + bruit() > 0.45 ? 0 : 1,
-    fager3: chance(0.03) ? null : dep + bruit() > 0.5 ? 0 : 1,
+    // Délai avant la première prise : indice 0 = dans les 5 min (le plus dépendant).
+    fager1: chance(0.03)
+      ? null
+      : clamp(Math.round((1 - dep) * 3 + seuils[0] + (instable() ? rand(-1, 1) : 0)), 0, 3),
+    fager2: chance(0.03) ? null : binaire(0.45, 1),
+    fager3: chance(0.03) ? null : binaire(0.5, 2),
     fager4: chance(0.03) ? null : bracket,
-    fager5: chance(0.03) ? null : dep + bruit() > 0.4 ? 0 : 1,
-    fager6: chance(0.03) ? null : dep + bruit() > 0.6 ? 0 : 1,
+    fager5: chance(0.03) ? null : binaire(0.4, 4),
+    fager6: chance(0.03) ? null : binaire(0.6, 5),
   };
 }
 
@@ -371,7 +409,10 @@ for (const participant of PARTICIPANTS) {
       let crav = cravBase + tendanceCraving(profil.trajectoire, semaine);
       if (weekend) crav += profil.weekend;
       if (consoJour < 0.5) crav -= 1.5; // l'arrêt soulage le manque
-      crav += rand(-1, 1);
+      // Variabilité d'un jour à l'autre : une envie auto-évaluée fluctue avec le
+      // stress, le sommeil, les sorties. Un bruit trop faible produisait des
+      // séries quasi constantes (deux valeurs sur quinze jours), peu crédibles.
+      crav += randNormal(0, 1.15);
 
       // Répartition de la consommation du jour entre les produits réellement
       // utilisés par ce participant (puff OU cigarette, sauf consommateurs de snus).
@@ -383,18 +424,21 @@ for (const participant of PARTICIPANTS) {
       CARNETS.push({
         participantCode: participant.code,
         date: date.toISOString(),
-        // Un produit non consommé est déclaré à 0 (et non "manquant").
+        // Un produit que le participant ne consomme pas est laissé VIDE, et non
+        // rempli de zéros : personne ne note « 0 cigarette » tous les jours
+        // pendant six semaines. Une colonne entière de zéros trahissait la
+        // génération automatique.
         cigarettes: !produits.cigarette
-          ? 0
+          ? null
           : chance(0.05)
             ? null
             : Math.round(equivCigarette),
         puffPourcentage: !produits.puff
-          ? 0
+          ? null
           : chance(0.05)
             ? null
             : Math.round(clamp(equivPuff / CIG_PAR_POURCENT_PUFF, 0, 100)),
-        snusSachets: partSnus,
+        snusSachets: produits.snus ? partSnus : null,
         cravingMoyenJour: chance(0.05) ? null : Math.round(clamp(crav, 0, 10)),
         evenementParticulier: chance(0.07)
           ? pick(
@@ -533,14 +577,20 @@ for (const participant of PARTICIPANTS) {
   // ----- Mesures de suivi T0 / T1 / T2 -----
   const taille = round1(rand(162, 190));
   const poidsBase = 55 + profil.dependance * 8 + rand(0, 28);
+  // Seuils de réponse propres au participant, figés pour les trois passations :
+  // c'est ce qui donne au Fagerström sa cohérence test-retest.
+  const seuilsFager = seuilsFagerParticipant();
+
   (["T0", "T1", "T2"] as const).forEach((temps, index) => {
     const semaineRef = [1, 3, 6][index];
     const consoDay = profil.consoBase * facteurConso(profil.trajectoire, semaineRef);
-    const depAt =
-      profil.trajectoire === "stable"
-        ? profil.dependance
-        : profil.dependance * (1 - 0.25 * index);
-    const fagers = fagerAnswers(depAt, consoDay);
+    // La dépendance évolue lentement : seul un arrêt effectif la fait chuter
+    // nettement. Le contrôle reste strictement constant.
+    const baisseDep = { stable: 0, lutte: 0.04, reduction: 0.09, arret: 0.3 }[
+      profil.trajectoire
+    ];
+    const depAt = profil.dependance * (1 - baisseDep * index);
+    const fagers = fagerAnswers(depAt, consoDay, seuilsFager);
     const poids = chance(0.04) ? null : round1(poidsBase + rand(-1.5, 1.5) - index * 0.4);
 
     // Motivation/capacité : montent pour les expérimentaux, stables pour les contrôles.
