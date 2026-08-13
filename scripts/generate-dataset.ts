@@ -30,7 +30,7 @@ function mulberry32(seed: number) {
 // (via SEED=... npx tsx scripts/generate-dataset.ts) pour que les statistiques
 // réalisées tombent dans les cibles visées — avec ~50 séances par modalité, le
 // bruit d'échantillonnage sur le d de Cohen est de l'ordre de ±0,2.
-const SEED = Number(process.env.SEED ?? 3690);
+const SEED = Number(process.env.SEED ?? 7024);
 const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -450,7 +450,19 @@ for (const participant of PARTICIPANTS) {
         heureDebut.setUTCDate(
           heureDebut.getUTCDate() + (semaine - 1) * 7 + (numeroDansSemaine - 1) * 3
         );
-        heureDebut.setUTCHours(randInt(9, 19), chance(0.5) ? 0 : 30);
+        // L'heure de début est l'horodatage du moment où le participant lance la
+        // saisie : elle ne tombe donc jamais pile. Les créneaux se concentrent sur
+        // la pause de midi et la fin de journée, et le démarrage suit de quelques
+        // minutes l'arrivée à la salle (rarement à l'heure ronde exacte).
+        const creneau = rng();
+        const heure =
+          creneau < 0.32
+            ? randInt(12, 13) // pause déjeuner
+            : creneau < 0.46
+              ? randInt(9, 11) // matinée
+              : randInt(17, 20); // après le travail
+        const minute = clamp(pick([0, 15, 30, 45]) + randInt(0, 13), 0, 59);
+        heureDebut.setUTCHours(heure, minute, randInt(0, 59));
 
         // A-t-il déjà arrêté la nicotine à cette semaine ?
         const aArrete =
