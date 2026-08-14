@@ -1,5 +1,5 @@
 /**
- * Contrôle des propriétés statistiques du jeu de données généré.
+ * Contrôle des propriétés statistiques du jeu de données modifié.
  * Usage : npx tsx scripts/check-dataset.ts
  */
 import { SEANCES, CARNETS, PARTICIPANTS, SUIVIS } from "../lib/donnees-profils";
@@ -96,6 +96,72 @@ const baisseConsoExp =
 const baisseConsoCtrl =
   ((consoSemaine(ctrl, 1) - consoSemaine(ctrl, 6)) / consoSemaine(ctrl, 1)) * 100;
 
+// --- Le produit (puff/cigarette) ne doit pas être confondu avec la trajectoire ---
+// On repère empiriquement les "quasi-arrêts" (produit tombé sous 20 % de son
+// niveau S1) et on vérifie qu'ils ne sont pas tous du même côté.
+type Produit = "cigarettes" | "puffPourcentage";
+const produitPrincipal = (code: string): Produit | null => {
+  const cig = consomme(code, "cigarettes");
+  const puff = consomme(code, "puffPourcentage");
+  if (cig && !puff) return "cigarettes";
+  if (puff && !cig) return "puffPourcentage";
+  return null; // snus (cumul) ou aucun usage détecté
+};
+const moyenneProduit = (code: string, produit: Produit, sem: number) =>
+  mean(
+    CARNETS.filter((r) => r.participantCode === code && semaine(r.date) === sem).map(
+      (r) => (r[produit] as number | null) ?? 0
+    )
+  );
+const quasiArrets = exp.filter((code) => {
+  const produit = produitPrincipal(code);
+  if (!produit) return false;
+  const s1 = moyenneProduit(code, produit, 1) ?? 0;
+  const s6 = moyenneProduit(code, produit, 6) ?? 0;
+  return s1 > 0 && s6 / s1 < 0.2;
+});
+const produitsQuasiArrets = new Set(quasiArrets.map((c) => produitPrincipal(c)));
+const confondu = quasiArrets.length >= 2 && produitsQuasiArrets.size <= 1;
+
+// --- Envie d'arrêter : ni variance dégénérée, ni dz d'artefact ---
+const casComplets = (() => {
+  const parCode = new Map<string, { t0: number | null; t2: number | null }>();
+  for (const s of SUIVIS) {
+    if (!exp.includes(s.participantCode) || (s.temps !== "T0" && s.temps !== "T2")) continue;
+    const e = parCode.get(s.participantCode) ?? { t0: null, t2: null };
+    if (s.temps === "T0") e.t0 = s.envieArreter as number | null;
+    if (s.temps === "T2") e.t2 = s.envieArreter as number | null;
+    parCode.set(s.participantCode, e);
+  }
+  return [...parCode.values()].filter(
+    (v): v is { t0: number; t2: number } => v.t0 !== null && v.t2 !== null
+  );
+})();
+const dzEnvie =
+  casComplets.length >= 3
+    ? cohensDPaired(casComplets.map((c) => c.t0), casComplets.map((c) => c.t2))
+    : null;
+const sdEnvieT0 = stdDev(envieT0.filter((v): v is number => v !== null))!;
+
+// --- Suivi T0/T2 cohérent avec le carnet, parmi les fumeurs de cigarettes ---
+const fumeursCig = exp.filter((code) => produitPrincipal(code) === "cigarettes");
+const suiviCigMoyenne = (t: "T0" | "T2") =>
+  mean(
+    SUIVIS.filter((s) => fumeursCig.includes(s.participantCode) && s.temps === t)
+      .map((s) => s.consoCigaretteSemaine as number | null)
+      .filter((v): v is number => v !== null)
+  )!;
+const suiviBaisseCig =
+  ((suiviCigMoyenne("T0") - suiviCigMoyenne("T2")) / suiviCigMoyenne("T0")) * 100;
+// Un participant qui ne fume jamais la cigarette doit avoir `null`, pas un 0
+// forcé qui diluerait la moyenne du groupe avec des zéros structurels.
+const nonFumeurs = PARTICIPANTS.map((p) => p.code).filter(
+  (code) => !CARNETS.some((r) => r.participantCode === code && (r.cigarettes ?? 0) > 0)
+);
+const zerosForces = SUIVIS.filter(
+  (s) => nonFumeurs.includes(s.participantCode) && s.consoCigaretteSemaine === 0
+).length;
+
 const ok =
   mc >= 0.25 && // cardio positif : barre visible, le sport augmente l'envie
   mm > mc && // musculation au-dessus
@@ -114,7 +180,13 @@ const ok =
   Math.min(...presence) >= 60 &&
   infractionsProduit.length === 0 &&
   utilisateursSnus.length <= 3 &&
-  horsPlageT0.length === 0;
+  horsPlageT0.length === 0 &&
+  !confondu && // le produit n'est pas confondu avec la trajectoire
+  sdEnvieT0 >= 0.9 && // variance non dégénérée sur l'envie d'arrêter à T0
+  casComplets.length >= 8 && // au moins 8/10 exploitables en apparié
+  (dzEnvie === null || dzEnvie <= 2.5) && // pas de dz d'artefact
+  suiviBaisseCig >= 8 && // le suivi T0/T2 reflète, lui aussi, une vraie baisse
+  zerosForces === 0; // aucun 0 forcé chez les non-fumeurs
 
 console.log(
   `${ok ? "OK  " : "    "} seed=${String(process.env.SEED ?? "défaut").padEnd(9)} ` +
@@ -125,6 +197,9 @@ console.log(
     `snus=${utilisateursSnus.length} cumuls=${infractionsProduit.length} ` +
     `T0hors[3-7]=${horsPlageT0.length} ` +
     `conso=-${baisseConsoExp.toFixed(0)}%(ctrl ${baisseConsoCtrl >= 0 ? "-" : "+"}${Math.abs(baisseConsoCtrl).toFixed(0)}%) ` +
-    `rpeEcart=${ecartRpe.toFixed(2)}`
+    `rpeEcart=${ecartRpe.toFixed(2)} ` +
+    `confondu=${confondu ? "OUI" : "non"} ` +
+    `sdEnvieT0=${sdEnvieT0.toFixed(2)} casComplets=${casComplets.length}/10 dzEnvie=${dzEnvie?.toFixed(2) ?? "—"} ` +
+    `suiviCig=-${suiviBaisseCig.toFixed(0)}% zerosForces=${zerosForces}`
 );
 if (infractionsProduit.length) console.log("  ⚠", infractionsProduit.join(", "));

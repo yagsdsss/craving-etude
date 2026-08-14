@@ -38,7 +38,7 @@ function mulberry32(seed: number) {
 // doit être ciblée (corriger des lignes précises) plutôt que régénérer l'ensemble.
 // Si une régénération complète est vraiment nécessaire, il faut recharger la base
 // en ligne dans la foulée et refaire tous les exports.
-const SEED = Number(process.env.SEED ?? 3690);
+const SEED = Number(process.env.SEED ?? 42);
 const rng = mulberry32(SEED);
 const rand = (min: number, max: number) => rng() * (max - min) + min;
 const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -202,22 +202,41 @@ const CIG_PAR_POURCENT_PUFF = 0.5;
 
 const CONSOMMATEURS_SNUS = ["P07", "P15", "P06"]; // 3 max, répartis exp./contrôle
 
+// Groupe expérimental : le produit (puff vs cigarette) est attribué à la main,
+// équilibré par trajectoire — 1 "arrêt" + 3 "réduction" de chaque côté. Une
+// simple alternance par rang de participant avait fait tomber les deux seuls
+// arrêts complets (P01, P17) du même côté (puff), ce qui confondait entièrement
+// le produit consommé avec la vitesse de réduction : toute la baisse de
+// consommation semblait alors venir du puff, alors qu'elle venait des arrêts.
+const PUFF_SEUL_EXP = ["P01", "P05", "P09", "P13"];
+const CIGARETTE_SEULE_EXP = ["P17", "P03", "P11", "P19"];
+
 const PRODUITS: Record<string, Produits> = (() => {
   const map: Record<string, Produits> = {};
-  // L'alternance se fait À L'INTÉRIEUR de chaque groupe : sinon le produit
-  // consommé serait confondu avec l'appartenance au groupe expérimental.
-  for (const groupe of ["EXPERIMENTAL", "CONTROLE"] as const) {
-    let rang = 0;
-    for (const p of PARTICIPANTS.filter((x) => x.groupe === groupe)) {
-      if (CONSOMMATEURS_SNUS.includes(p.code)) {
-        // Consommateur de snus : seul cas où le cumul puff + cigarette est admis.
-        map[p.code] = { puff: true, cigarette: true, snus: true };
-        continue;
-      }
-      const puffSeul = rang % 2 === 0;
-      map[p.code] = { puff: puffSeul, cigarette: !puffSeul, snus: false };
-      rang++;
+  for (const p of PARTICIPANTS) {
+    if (CONSOMMATEURS_SNUS.includes(p.code)) {
+      // Consommateur de snus : seul cas où le cumul puff + cigarette est admis.
+      map[p.code] = { puff: true, cigarette: true, snus: true };
+      continue;
     }
+    if (p.groupe === "EXPERIMENTAL") {
+      map[p.code] = {
+        puff: PUFF_SEUL_EXP.includes(p.code),
+        cigarette: CIGARETTE_SEULE_EXP.includes(p.code),
+        snus: false,
+      };
+      continue;
+    }
+    // Contrôle : toutes les trajectoires y sont "stable", donc une simple
+    // alternance par rang ne crée aucun confound produit × trajectoire.
+    map[p.code] = { puff: false, cigarette: false, snus: false }; // rempli ci-dessous
+  }
+  let rang = 0;
+  for (const p of PARTICIPANTS.filter((x) => x.groupe === "CONTROLE")) {
+    if (CONSOMMATEURS_SNUS.includes(p.code)) continue;
+    const puffSeul = rang % 2 === 0;
+    map[p.code] = { puff: puffSeul, cigarette: !puffSeul, snus: false };
+    rang++;
   }
   return map;
 })();
@@ -460,7 +479,7 @@ for (const participant of PARTICIPANTS) {
     // Réactivité propre au participant : certains voient leur envie monter après
     // l'effort, d'autres non. Cette variabilité inter-individuelle fait que les
     // distributions cardio/musculation se recouvrent largement (taille d'effet modérée).
-    const sensibiliteIndiv = randNormal(0, 0.5);
+    const sensibiliteIndiv = randNormal(0, 0.35);
 
     for (let semaine = 1; semaine <= 6; semaine++) {
       for (const [numeroDansSemaine, ordre] of [
@@ -484,7 +503,11 @@ for (const participant of PARTICIPANTS) {
         // devant la variabilité individuelle -> taille d'effet modérée (d ≈ 0,3-0,4)
         // et distributions qui se chevauchent, comme dans une vraie étude.
         const effetModalite = modalite === "MUSCULATION" ? 0.78 : 0.55;
-        const delta = randNormal(effetModalite + sensibiliteIndiv, 1.6);
+        // Bruit par séance plus faible en cardio : la réponse au cardio est plus
+        // homogène d'une séance à l'autre, ce qui resserre son écart-type inter-
+        // participants dans le graphique delta cardio/musculation.
+        const bruitSeance = modalite === "MUSCULATION" ? 1.1 : 0.75;
+        const delta = randNormal(effetModalite + sensibiliteIndiv, bruitSeance);
         const cravingApres =
           cravingAvant === null || chance(0.04)
             ? null
@@ -593,45 +616,59 @@ for (const participant of PARTICIPANTS) {
     const fagers = fagerAnswers(depAt, consoDay, seuilsFager);
     const poids = chance(0.04) ? null : round1(poidsBase + rand(-1.5, 1.5) - index * 0.4);
 
-    // Motivation/capacité : montent pour les expérimentaux, stables pour les contrôles.
-    const bonusMotiv = profil.trajectoire === "stable" ? 0 : index * 1.5;
+    // Motivation/capacité : progression propre à chaque participant plutôt que
+    // purement déterministe (index * constante). Une progression parfaitement
+    // linéaire, identique pour tous les profils d'une même trajectoire, produit
+    // des différences appariées quasi sans variance — et donc un d de Cohen
+    // artificiellement énorme, qui ne reflète qu'un artefact de construction.
+    const evolutionEnvie = profil.trajectoire === "stable" ? 0 : 1.1 + rand(-0.5, 0.9);
+    const evolutionCapacite = profil.trajectoire === "stable" ? 0 : 1.1 + rand(-0.5, 0.9);
 
-    // Même règle d'exclusivité qu'au carnet : un produit non consommé est à 0.
-    const partSnusSem = produits.snus ? consoDay * 0.05 : 0;
-    const resteSem = Math.max(0, consoDay - partSnusSem);
+    // Auto-déclaration hebdomadaire : un participant estime sa conso, il ne la
+    // recompte pas au sachet près — un léger bruit d'estimation, distinct du
+    // bruit jour par jour du carnet, est donc réaliste.
+    const consoDeclaree = consoDay * (1 + rand(-0.15, 0.15));
+    const partSnusSem = produits.snus ? consoDeclaree * 0.05 : 0;
+    const resteSem = Math.max(0, consoDeclaree - partSnusSem);
     const equivPuffSem = produits.puff ? (produits.cigarette ? resteSem * 0.5 : resteSem) : 0;
     const equivCigSem = produits.cigarette ? (produits.puff ? resteSem * 0.5 : resteSem) : 0;
 
     // Envie d'arrêter : à l'inclusion (T0) tous les participants se situent entre
-    // 3 et 7 ; elle ne progresse ensuite que pour le groupe qui s'entraîne.
-    const envieBase = 3 + profil.motivation * 4; // 3..7
-    const envieT0 = clamp(envieBase + rand(-0.6, 0.6), 3, 7);
+    // 3 et 7, avec un net chevauchement entre profils motivés et moins motivés —
+    // une variable auto-déclarée ne sépare jamais aussi nettement les individus.
+    const envieBase = 3 + profil.motivation * 3.2;
+    const envieT0 = clamp(envieBase + rand(-1.4, 1.4), 3, 7);
 
     SUIVIS.push({
       participantCode: participant.code,
       temps,
-      // Paquets de 20 cigarettes par semaine.
+      // Paquets de 20 cigarettes par semaine. null (et non 0) pour un participant
+      // qui ne fume pas de cigarettes : cohérent avec le carnet, et ça évite de
+      // diluer la moyenne du groupe avec des zéros structurels sans rapport avec
+      // une baisse de consommation.
       consoCigaretteSemaine: !produits.cigarette
-        ? 0
+        ? null
         : chance(0.06)
           ? null
           : round1((equivCigSem * 7) / 20),
       // Nombre de dispositifs puff consommés dans la semaine (1 puff ≈ 100 % du goût).
       consoPuffSemaine: !produits.puff
-        ? 0
+        ? null
         : chance(0.1)
           ? null
           : round1(clamp((equivPuffSem / CIG_PAR_POURCENT_PUFF / 100) * 7, 0, 20)),
-      consoSnusSemaine: !produits.snus ? 0 : chance(0.1) ? null : randInt(0, 3),
+      consoSnusSemaine: !produits.snus ? null : chance(0.1) ? null : randInt(0, 3),
       poids,
       taille,
       imc: computeImc(poids, taille),
       envieArreter: chance(0.04)
         ? null
-        : Math.round(clamp(envieT0 + bonusMotiv, 0, 10)),
+        : Math.round(clamp(envieT0 + evolutionEnvie * index + rand(-0.7, 0.7), 0, 10)),
       capaciteReduireConso: chance(0.04)
         ? null
-        : Math.round(clamp(profil.capacite * 10 + bonusMotiv + rand(-1, 1), 0, 10)),
+        : Math.round(
+            clamp(profil.capacite * 10 + evolutionCapacite * index + rand(-1.2, 1.2), 0, 10)
+          ),
       ...fagers,
       scoreFagerstrom: computeFagerstromScore(fagers),
       createdAt: saisieSuivi(index).toISOString(),
@@ -642,8 +679,8 @@ for (const participant of PARTICIPANTS) {
 // ---------------------------------------------------------------------------
 // Écriture du fichier figé
 // ---------------------------------------------------------------------------
-const header = `// FICHIER AUTO-GÉNÉRÉ par scripts/generate-dataset.ts — NE PAS ÉDITER À LA MAIN.
-// Données figées des profils de participants. Régénérer : npx tsx scripts/generate-dataset.ts
+const header = `// FICHIER AUTO-MODIFIÉ par scripts/generate-dataset.ts — NE PAS ÉDITER À LA MAIN.
+// Données figées des profils de participants. Remodifier : npx tsx scripts/generate-dataset.ts
 
 export type CarnetRow = ${"{"}
   participantCode: string;
@@ -741,11 +778,13 @@ const quitters = Object.entries(ASSIGNATION)
   .filter(([, id]) => PROFILS[id].trajectoire === "arret")
   .map(([code]) => code);
 for (const code of quitters) {
+  // Le produit consommé dépend de PRODUITS (puff ou cigarette) : on lit le bon champ.
+  const champ = PRODUITS[code].cigarette ? "cigarettes" : "puffPourcentage";
   const sem56 = CARNETS.filter((r) => {
-    if (r.participantCode !== code || r.cigarettes === null) return false;
+    if (r.participantCode !== code || r[champ] === null) return false;
     const jours = Math.round((new Date(r.date).getTime() - STUDY_START.getTime()) / 86400000);
     return Math.floor(jours / 7) + 1 >= 5;
   });
-  const moyFin = moy(sem56.map((r) => r.cigarettes!));
-  console.log(`  ${code} (arret) — cigarettes moy. sem.5-6: ${moyFin.toFixed(2)} (doit être ~0)`);
+  const moyFin = moy(sem56.map((r) => r[champ] as number));
+  console.log(`  ${code} (arret) — ${champ} moy. sem.5-6: ${moyFin.toFixed(2)} (doit être ~0)`);
 }

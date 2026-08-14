@@ -69,6 +69,15 @@ type Props = {
   };
   qsuSemaine: { semaine: string; score: number | null }[];
   consommation: { semaine: string; experimental: number | null; controle: number | null }[];
+  consommationParProduit: {
+    semaine: string;
+    cigExp: number | null;
+    cigCtrl: number | null;
+    puffExp: number | null;
+    puffCtrl: number | null;
+    snusExp: number | null;
+    snusCtrl: number | null;
+  }[];
   envieSemaine: { semaine: string; experimental: number | null; controle: number | null }[];
   delaiConso: {
     points: { heures: number; craving: number; modalite: string }[];
@@ -87,6 +96,8 @@ type Props = {
     }[];
     evolutionEnvieExp: number | null;
     evolutionCapaciteExp: number | null;
+    completudeEnvie: { n: number; nTotal: number; dz: number | null };
+    completudeCapacite: { n: number; nTotal: number; dz: number | null };
   };
   trajectoires: Record<string, number | string | null>[];
   participantCodes: string[];
@@ -146,6 +157,7 @@ export default function DashboardCharts({
   rpe,
   qsuSemaine,
   consommation,
+  consommationParProduit,
   envieSemaine,
   motivation,
   delaiConso,
@@ -293,7 +305,73 @@ export default function DashboardCharts({
         </p>
       </Card>
 
-      <Card title="Consommation quotidienne moyenne — semaine par semaine">
+      <Card title="Consommation par produit — semaine par semaine (sans conversion)">
+        <p className="mb-3 text-xs text-slate-500">
+          Chaque produit moyenné séparément, uniquement sur les participants qui l&apos;utilisent —
+          aucune conversion, aucun coefficient. C&apos;est la vue de référence : si le graphique
+          suivant (équivalent-cigarette) est mis en doute, celui-ci reste valide seul.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <p className="mb-1 text-center text-xs font-medium text-slate-500">
+              Cigarettes / jour
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={consommationParProduit} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+                <XAxis dataKey="semaine" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} width={24} />
+                <Tooltip />
+                <Line type="monotone" dataKey="cigExp" name="Exp." stroke={INDIGO} strokeWidth={2} connectNulls dot={false} />
+                <Line type="monotone" dataKey="cigCtrl" name="Ctrl." stroke={SLATE} strokeWidth={2} connectNulls dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div>
+            <p className="mb-1 text-center text-xs font-medium text-slate-500">
+              % goût puff / jour
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={consommationParProduit} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+                <XAxis dataKey="semaine" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} width={24} />
+                <Tooltip />
+                <Line type="monotone" dataKey="puffExp" name="Exp." stroke={EMERALD} strokeWidth={2} connectNulls dot={false} />
+                <Line type="monotone" dataKey="puffCtrl" name="Ctrl." stroke={SLATE} strokeWidth={2} connectNulls dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div>
+            <p className="mb-1 text-center text-xs font-medium text-slate-500">
+              Sachets snus / jour
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={consommationParProduit} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+                <XAxis dataKey="semaine" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} width={24} />
+                <Tooltip />
+                <Line type="monotone" dataKey="snusExp" name="Exp." stroke={AMBER} strokeWidth={2} connectNulls dot={false} />
+                <Line type="monotone" dataKey="snusCtrl" name="Ctrl." stroke={SLATE} strokeWidth={2} connectNulls dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Traits pleins colorés : groupe expérimental. Traits gris : groupe contrôle. Seuls les
+          participants utilisant le produit entrent dans la moyenne (cf. « Un participant consomme
+          soit la puff, soit la cigarette »).
+        </p>
+      </Card>
+
+      <Card title="Consommation quotidienne moyenne — équivalent-cigarette (estimation)">
+        <p className="mb-3 text-xs text-slate-500">
+          ⚠️ Métrique dérivée : 1 % de goût puff est converti en 0,5 cigarette, à partir d&apos;une
+          hypothèse de contenu nicotinique (500 mg/pod, 10 mg/cigarette) — il n&apos;existe pas de
+          coefficient consensuel dans la littérature. À citer avec cette hypothèse explicite, et
+          toujours accompagné du graphique par produit ci-dessus.
+        </p>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={consommation} margin={MARGES}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
@@ -403,12 +481,29 @@ export default function DashboardCharts({
             value={fmt(motivation.evolutionEnvieExp)}
           />
           <StatLine
+            label="Cas complets T0+T2 (envie d'arrêter)"
+            value={`${motivation.completudeEnvie.n} / ${motivation.completudeEnvie.nTotal}`}
+          />
+          <StatLine
+            label="dz apparié (envie d'arrêter, cas complets)"
+            value={fmt(motivation.completudeEnvie.dz)}
+          />
+          <StatLine
             label="Évolution capacité perçue (exp., T0 → T2)"
             value={fmt(motivation.evolutionCapaciteExp)}
           />
+          <StatLine
+            label="Cas complets T0+T2 (capacité perçue)"
+            value={`${motivation.completudeCapacite.n} / ${motivation.completudeCapacite.nTotal}`}
+          />
         </div>
         <p className="mt-3 text-xs text-slate-400">
-          Échelles 0-10. Traits pleins : groupe expérimental ; pointillés : groupe contrôle.
+          Échelles 0-10. Traits pleins : groupe expérimental ; pointillés : groupe contrôle.{" "}
+          <strong className="font-medium">
+            Le dz est calculé sur un très petit effectif (cas complets seulement) : avec si peu de
+            sujets, sa valeur est instable et peut être démesurée par simple effet de variance
+            réduite — à présenter comme indicatif, jamais comme un test conclusif.
+          </strong>
         </p>
       </Card>
 

@@ -184,6 +184,15 @@ function semaineDeCarnet(carnets: CarnetJour[]) {
   });
 }
 
+/**
+ * ⚠️ Métrique dérivée, pas une mesure brute. Elle repose sur un coefficient de
+ * conversion (1 % de goût puff ≈ 0,5 cigarette) qui n'a pas d'équivalent
+ * consensuel dans la littérature — seule l'hypothèse de contenu nicotinique
+ * documentée plus haut le justifie. À ne présenter qu'en complément des
+ * composants bruts (`consommationParProduitParSemaine`), jamais seule comme
+ * preuve d'une baisse de consommation : un lecteur qui demande d'où sort le
+ * coefficient doit pouvoir vérifier le calcul ET voir les données non converties.
+ */
 export function consommationParSemaine(carnets: CarnetJour[], participants: Participant[]) {
   const withWeek = semaineDeCarnet(carnets);
 
@@ -197,6 +206,44 @@ export function consommationParSemaine(carnets: CarnetJour[], participants: Part
       semaine: `S${semaine}`,
       experimental: round(mean(valuesExp)),
       controle: round(mean(valuesCtrl)),
+    };
+  });
+}
+
+/**
+ * Consommation par PRODUIT (cigarettes/jour, % de goût puff/jour, sachets de
+ * snus/jour), sans conversion — chaque composant est moyenné uniquement sur
+ * les participants qui l'utilisent réellement (les non-consommateurs ont une
+ * valeur nulle, pas un 0, donc ils ne diluent pas la moyenne). C'est la vue de
+ * référence : contrairement à l'équivalent-cigarette, elle ne dépend d'aucun
+ * coefficient à justifier.
+ */
+export function consommationParProduitParSemaine(
+  carnets: CarnetJour[],
+  participants: Participant[]
+) {
+  const withWeek = semaineDeCarnet(carnets);
+
+  return Array.from({ length: 6 }, (_, i) => i + 1).map((semaine) => {
+    const rows = withWeek.filter((c) => c.semaine === semaine);
+    const pour = (groupe: "EXPERIMENTAL" | "CONTROLE", champ: "cigarettes" | "puffPourcentage" | "snusSachets") =>
+      round(
+        mean(
+          rows
+            .filter((c) => groupeOf(participants, c.participantCode) === groupe)
+            .map((c) => c[champ])
+            .filter((v): v is number => v !== null)
+        )
+      );
+
+    return {
+      semaine: `S${semaine}`,
+      cigExp: pour("EXPERIMENTAL", "cigarettes"),
+      cigCtrl: pour("CONTROLE", "cigarettes"),
+      puffExp: pour("EXPERIMENTAL", "puffPourcentage"),
+      puffCtrl: pour("CONTROLE", "puffPourcentage"),
+      snusExp: pour("EXPERIMENTAL", "snusSachets"),
+      snusCtrl: pour("CONTROLE", "snusSachets"),
     };
   });
 }
@@ -315,10 +362,37 @@ export function motivationParTemps(suivis: MesureSuivi[], participants: Particip
   const evolution = (a: number | null, b: number | null) =>
     a === null || b === null ? null : round(b - a);
 
+  // Cas complets (valeur présente à T0 ET à T2) pour le groupe expérimental —
+  // seule base valide pour un test apparié. Avec un très petit échantillon
+  // (n ≤ 10), un dz calculé sur quelques cas complets est instable et très
+  // sensible à chaque participant : il est affiché ici, mais explicitement
+  // comme indicatif, pas comme un résultat à citer tel quel.
+  const casComplet = (champ: "envieArreter" | "capaciteReduireConso") => {
+    const parCode = new Map<string, { t0: number | null; t2: number | null }>();
+    for (const s of suivis) {
+      if (groupeOf(participants, s.participantCode) !== "EXPERIMENTAL") continue;
+      if (s.temps !== "T0" && s.temps !== "T2") continue;
+      const entry = parCode.get(s.participantCode) ?? { t0: null, t2: null };
+      if (s.temps === "T0") entry.t0 = s[champ];
+      if (s.temps === "T2") entry.t2 = s[champ];
+      parCode.set(s.participantCode, entry);
+    }
+    const complets = [...parCode.values()].filter(
+      (v): v is { t0: number; t2: number } => v.t0 !== null && v.t2 !== null
+    );
+    return {
+      n: complets.length,
+      nTotal: parCode.size,
+      dz: complets.length >= 3 ? round(cohensDPaired(complets.map((c) => c.t0), complets.map((c) => c.t2))) : null,
+    };
+  };
+
   return {
     chart,
     evolutionEnvieExp: evolution(first.envieExp, last.envieExp),
     evolutionCapaciteExp: evolution(first.capaciteExp, last.capaciteExp),
+    completudeEnvie: casComplet("envieArreter"),
+    completudeCapacite: casComplet("capaciteReduireConso"),
   };
 }
 

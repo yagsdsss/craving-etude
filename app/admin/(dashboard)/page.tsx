@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   avantApresGlobal,
   consommationParSemaine,
+  consommationParProduitParSemaine,
   cravingSelonDelaiConso,
   qsuParSemaine,
   deltaParModalite,
@@ -38,6 +39,7 @@ export default async function AdminDashboardPage() {
     rpe: rpeParModalite(seances),
     qsuSemaine: qsuParSemaine(seances),
     consommation: consommationParSemaine(carnets, participants),
+    consommationParProduit: consommationParProduitParSemaine(carnets, participants),
     envieSemaine: envieQuotidienneParSemaine(carnets, participants),
     motivation: motivationParTemps(suivis, participants),
     delaiConso: cravingSelonDelaiConso(seances),

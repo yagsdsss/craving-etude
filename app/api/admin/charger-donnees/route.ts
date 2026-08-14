@@ -4,7 +4,7 @@ import { isSessionTokenValid, SESSION_COOKIE } from "@/lib/auth";
 import { CARNETS, SEANCES, SUIVIS, PARTICIPANTS } from "@/lib/donnees-profils";
 
 // Route one-shot : remplace le carnet, les séances et les mesures de suivi de
-// TOUS les participants par le jeu de données figé (profils) généré hors-ligne
+// TOUS les participants par le jeu de données figé (profils) modifié hors-ligne
 // via scripts/generate-dataset.ts. Ne touche pas aux participants eux-mêmes.
 // À retirer après usage.
 

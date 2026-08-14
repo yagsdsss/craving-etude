@@ -11,7 +11,7 @@ async function main() {
   await prisma.mesureSuivi.deleteMany();
   await prisma.participant.deleteMany();
 
-  // Tout provient du jeu de données figé (profils), généré hors-ligne par
+  // Tout provient du jeu de données figé (profils), modifié hors-ligne par
   // scripts/generate-dataset.ts — même source que la route admin, zéro divergence.
   console.log("Création des participants...");
   await prisma.participant.createMany({
